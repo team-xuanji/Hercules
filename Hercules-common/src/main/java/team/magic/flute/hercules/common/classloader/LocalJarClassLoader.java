@@ -213,7 +213,6 @@ public class LocalJarClassLoader extends ClassLoader implements Closeable {
 
     @Override
     protected void finalize() throws Throwable {
-        super.finalize();
         this.close();
     }
 }

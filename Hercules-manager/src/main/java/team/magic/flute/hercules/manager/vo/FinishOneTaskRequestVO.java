@@ -12,4 +12,6 @@ public class FinishOneTaskRequestVO {
     private String taskId;
     @NotBlank(message = "The execution of the task must conclude with writing CHECKPOINT information.")
     private String checkPointInfo;
+    @NotBlank(message = "Executor ID must be specified.")
+    private String executorId;
 }

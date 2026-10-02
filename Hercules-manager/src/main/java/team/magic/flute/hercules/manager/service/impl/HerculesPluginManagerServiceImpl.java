@@ -200,20 +200,24 @@ public class HerculesPluginManagerServiceImpl implements HerculesPluginManagerSe
 
     @Override
     public PluginResourceInfo searchPlugin(String pluginHandle,String pluginGroup){
-        if(StringUtils.isNotBlank(pluginGroup)){
-            HerculesPluginInfoPo plugin = pluginService.getById(pluginGroup);
-            return fileStorage.getPlugin(plugin);
-        }else if(StringUtils.isNotBlank(pluginHandle)){
+        if(StringUtils.isNotBlank(pluginHandle)){
             LambdaQueryWrapper<HerculesPluginImplInfoPo> lambdaQueryWrapper = new LambdaQueryWrapper<HerculesPluginImplInfoPo>()
-                    .eq(HerculesPluginImplInfoPo::getPluginHandle,pluginHandle)
-                    .isNotNull(HerculesPluginImplInfoPo::getPluginGroup)
-                    .last("LIMIT 1");
+                    .eq(HerculesPluginImplInfoPo::getPluginHandle,pluginHandle);
+            if(StringUtils.isNotBlank(pluginGroup)){
+                lambdaQueryWrapper = lambdaQueryWrapper.eq(HerculesPluginImplInfoPo::getPluginGroup,pluginGroup);
+            }else{
+                lambdaQueryWrapper = lambdaQueryWrapper.isNotNull(HerculesPluginImplInfoPo::getPluginGroup);
+            }
+            lambdaQueryWrapper = lambdaQueryWrapper.last("LIMIT 1");
             HerculesPluginImplInfoPo pluginImpl = pluginImplService.getOne(lambdaQueryWrapper);
             if(pluginImpl==null){
                 return new PluginResourceInfo();
             }
             String searchedPluginGroup = pluginImpl.getPluginGroup();
             HerculesPluginInfoPo plugin = pluginService.getById(searchedPluginGroup);
+            return fileStorage.getPlugin(plugin);
+        }else if(StringUtils.isNotBlank(pluginGroup)){
+            HerculesPluginInfoPo plugin = pluginService.getById(pluginGroup);
             return fileStorage.getPlugin(plugin);
         }
         return new PluginResourceInfo();

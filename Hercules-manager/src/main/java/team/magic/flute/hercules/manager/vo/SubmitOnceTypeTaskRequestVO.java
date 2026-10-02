@@ -11,7 +11,7 @@ import team.magic.flute.hercules.common.util.JacksonUtils;
 import team.magic.flute.hercules.manager.dao.po.HerculesTaskInfo;
 import team.magic.flute.hercules.manager.entity.recover.RecoverStrategy;
 
-import javax.validation.constraints.NotNull;
+import javax.validation.constraints.NotBlank;
 
 import static team.magic.flute.hercules.common.global.Constant.TASK_MAX_BUCKET_SIZE;
 import static team.magic.flute.hercules.common.status.TaskType.ONCE;
@@ -20,14 +20,14 @@ import static team.magic.flute.hercules.common.status.TaskType.ONCE;
 @Accessors(chain = true)
 public class SubmitOnceTypeTaskRequestVO {
     private String id;
-    @NotNull
+    @NotBlank
     private String executorRegion;
     private String desc;
-    @NotNull
+    @NotBlank
     private String pluginHandle;
-    @NotNull
+    @NotBlank
     private String pluginGroup;
-    @NotNull
+    @NotBlank
     private String context;
     private Integer maxRetryTimes;
     private String asyncRecoverContext;

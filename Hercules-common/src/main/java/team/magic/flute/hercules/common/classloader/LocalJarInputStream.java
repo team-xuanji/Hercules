@@ -48,7 +48,6 @@ public class LocalJarInputStream extends InputStream {
 
     @Override
     protected void finalize() throws Throwable {
-        super.finalize();
         this.close();
     }
 }

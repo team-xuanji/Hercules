@@ -358,14 +358,14 @@ public class ExecutorProcessHandleImpl implements ExecutorProcessHandle, Closeab
 
     private void abandon(HerculesRunnableTaskInfo taskInfo) {
         BaseResponse<Boolean> result = managerApi.abandonOneTask(taskInfo.getId(),runnerEnv.getRunnerInstanceId());
-        if(result.getCode()!=200){
+        if(result.getCode()!=200 || !Boolean.TRUE.equals(result.getData())){
             throw new RuntimeException(result.getMsg());
         }
     }
 
     private void failed(HerculesRunnableTaskInfo taskInfo) {
         BaseResponse<Boolean> result = managerApi.failOneTask(taskInfo.getId(),runnerEnv.getRunnerInstanceId());
-        if(result.getCode()!=200){
+        if(result.getCode()!=200 || !Boolean.TRUE.equals(result.getData())){
             throw new RuntimeException(result.getMsg());
         }
     }
@@ -374,8 +374,9 @@ public class ExecutorProcessHandleImpl implements ExecutorProcessHandle, Closeab
         BaseResponse<Boolean> result = managerApi.finishOneTask(new FinishOneTaskRequestVO()
                 .setTaskId(taskExecutionContext.getId())
                 .setCheckPointInfo(taskExecutionContext.getCheckPointResult())
+                .setExecutorId(runnerEnv.getRunnerInstanceId())
         );
-        if(result.getCode()!=200){
+        if(result.getCode()!=200 || !Boolean.TRUE.equals(result.getData())){
             throw new RuntimeException(result.getMsg());
         }
     }

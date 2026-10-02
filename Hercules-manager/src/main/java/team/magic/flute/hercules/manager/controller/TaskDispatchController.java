@@ -21,6 +21,7 @@ import team.magic.flute.hercules.manager.service.HerculesExecutorTasksService;
 import team.magic.flute.hercules.manager.util.DTOConvertUtils;
 import team.magic.flute.hercules.manager.vo.FinishOneTaskRequestVO;
 
+import javax.validation.Valid;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -62,6 +63,7 @@ public class TaskDispatchController {
                 .ge(HerculesTaskInfo::getBucketId,begin)
                 .lt(HerculesTaskInfo::getBucketId,end)
                 .isNull(HerculesTaskInfo::getOwnerId)
+                .orderByAsc(HerculesTaskInfo::getInsertTime)
                 .last("LIMIT "+fetchLimit));
         if(taskInfoList.isEmpty()){
             log.warn("Unable to retrieve task information.range[{}],executorId[{}],executorRegion[{}]", JacksonUtils.writeValueAsString(fetchRange),executorId,executorRegion);
@@ -151,12 +153,14 @@ public class TaskDispatchController {
     }
 
     @PutMapping("/finishOneTask")
-    public BaseResponse<Boolean> finishOneTask(@RequestBody FinishOneTaskRequestVO requestVO){
-        HerculesTaskInfo herculesTaskInfo = new HerculesTaskInfo()
-                .setId(requestVO.getTaskId())
-                .setCheckPointInfo(requestVO.getCheckPointInfo())
-                .setStatus(TaskStatus.SUCCESS.name());
-        return BaseResponse.success(executorTasksService.updateById(herculesTaskInfo));
+    public BaseResponse<Boolean> finishOneTask(@Valid @RequestBody FinishOneTaskRequestVO requestVO){
+        LambdaUpdateWrapper<HerculesTaskInfo> updateWrapper = new LambdaUpdateWrapper<HerculesTaskInfo>()
+                .eq(HerculesTaskInfo::getId,requestVO.getTaskId())
+                .eq(HerculesTaskInfo::getOwnerId,requestVO.getExecutorId())
+                .eq(HerculesTaskInfo::getStatus, TaskStatus.RUNNING.name())
+                .set(HerculesTaskInfo::getCheckPointInfo,requestVO.getCheckPointInfo())
+                .set(HerculesTaskInfo::getStatus,TaskStatus.SUCCESS.name());
+        return BaseResponse.success(executorTasksService.update(updateWrapper));
     }
 
     @PutMapping("/abandonOneTask")
