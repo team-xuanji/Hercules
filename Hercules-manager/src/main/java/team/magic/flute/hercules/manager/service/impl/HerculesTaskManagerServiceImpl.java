@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import team.magic.flute.hercules.common.http.BaseResponse;
 import team.magic.flute.hercules.common.http.HerculesRunnableTaskInfo;
+import team.magic.flute.hercules.common.plugin.PluginResourceInfo;
 import team.magic.flute.hercules.common.status.TaskStatus;
 import team.magic.flute.hercules.common.util.AESUtils;
 import team.magic.flute.hercules.common.util.StrFormat;
@@ -14,10 +15,7 @@ import team.magic.flute.hercules.manager.config.RunnerEnv;
 import team.magic.flute.hercules.manager.dao.po.HerculesFailedTaskPo;
 import team.magic.flute.hercules.manager.dao.po.HerculesTaskInfo;
 import team.magic.flute.hercules.manager.global.RecoverEventLevel;
-import team.magic.flute.hercules.manager.service.HerculesExecutorInfoService;
-import team.magic.flute.hercules.manager.service.HerculesExecutorTasksService;
-import team.magic.flute.hercules.manager.service.HerculesFailedTaskService;
-import team.magic.flute.hercules.manager.service.HerculesTaskManagerService;
+import team.magic.flute.hercules.manager.service.*;
 import team.magic.flute.hercules.manager.util.DTOConvertUtils;
 import team.magic.flute.hercules.manager.vo.AsyncRetryOneTaskRequestVO;
 import team.magic.flute.hercules.manager.vo.HerculesRecoverTaskInfoVO;
@@ -36,12 +34,20 @@ public class HerculesTaskManagerServiceImpl implements HerculesTaskManagerServic
     @Autowired
     private HerculesExecutorInfoService executorInfoService;
     @Autowired
+    private HerculesPluginManagerService  pluginManagerService;
+    @Autowired
     private RunnerEnv runnerEnv;
 
 
     @Override
     public BaseResponse<HerculesRunnableTaskInfo> submitOnceTask(SubmitOnceTypeTaskRequestVO submitTaskRequestVO) {
         HerculesTaskInfo taskInfo = submitTaskRequestVO.parse2TaskInfo(runnerEnv.getHttpEncryptKey());
+        String pluginGroup = submitTaskRequestVO.getPluginGroup();
+        String pluginHandle = submitTaskRequestVO.getPluginHandle();
+        PluginResourceInfo resourceInfo = pluginManagerService.searchPlugin(pluginHandle,pluginGroup);
+        if(resourceInfo == null || resourceInfo.getResources()==null || resourceInfo.getResources().isEmpty()){
+            return BaseResponse.fail(StrFormat.format("Tasks may not be submitted unless the corresponding plugin is registered.PluginGroup[{}],PluginHandle[{}]",pluginGroup,pluginHandle));
+        }
         if(executorInfoService.getAllAvailableExecutorRegion().contains(taskInfo.getExecutorRegion())){
             Collection<String> whiteList = executorInfoService.getPluginHandleWhiteListByExecutorRegion(taskInfo.getExecutorRegion());
             if(whiteList == null || whiteList.isEmpty() || whiteList.contains(taskInfo.getPluginHandle())){

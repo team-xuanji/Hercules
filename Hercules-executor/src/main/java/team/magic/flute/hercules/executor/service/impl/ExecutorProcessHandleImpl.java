@@ -41,6 +41,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -60,7 +61,7 @@ public class ExecutorProcessHandleImpl implements ExecutorProcessHandle, Closeab
     private FileStorage fileStorage;
 
     private Cache<String,String> pluginVersionCache;
-    private final Set<String> processInfoCache = new HashSet<>();
+    private final Set<String> processInfoCache = ConcurrentHashMap.newKeySet();
 
     private TaskPluginContext taskPluginContext;
 
