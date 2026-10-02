@@ -1,0 +1,45 @@
+kind: Service
+specVersion: v4
+metadata:
+ name: hercules-twelve-labors
+ apiVersion: "v1"
+ accessPoint:
+  container: coms/hercules-twelve-labors
+containers:
+ - name: coms/hercules-twelve-labors
+   imagePullPolicy: PullIfNotPresent
+   ports:
+    - name: hercules-twelve-labors
+      protocol: tcp
+      targetPort: 0
+      containerPort: 8080
+profiles:
+  - name: asics_k8s_qa
+    cpu: 1
+    mem: 1024
+    replicas: 1
+    otel.resource.attributes: service.name=hercules-twelve-labors_v1_qa,service.version=v1,host.name=k8s
+    containers:
+      - name: coms/hercules-twelve-labors
+        cpu: 0.1
+        mem: 1024
+    envs:
+      system.region: zb
+      HERCULES_ACTIVE_PROFILE: asics_qa
+      tianji.key: hercules-twelve-labors
+      tianji.secret: 1C744BDA482948DE91A481B3812D314E
+  - name: asics_k8s_prod
+    cpu: 1
+    mem: 2048
+    replicas: 1
+    otel.resource.attributes: service.name=hercules-twelve-labors_v1_prod,service.version=v1,host.name=k8s
+    containers:
+      # Format here should be group/project-module-name
+      - name: coms/hercules-twelve-labors
+        cpu: 0.1
+        mem: 1024
+        # System environment variable configuration
+    envs:
+      system.region: zb
+      HERCULES_ACTIVE_PROFILE: asics_prod
+      tianji.key: hercules-twelve-labors

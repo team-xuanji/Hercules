@@ -1,0 +1,46 @@
+kind: "Service"
+specVersion: v4
+metadata:
+ name: hercules-manager
+ apiVersion: "v1"
+ accessPoint:
+  container: coms/hercules-manager
+containers:
+ - name: coms/hercules-manager
+   imagePullPolicy: PullIfNotPresent
+   ports:
+    - name: hercules-manager
+      protocol: tcp
+      targetPort: 0
+      containerPort: 8080
+profiles:
+  - name: asics_k8s_qa
+    cpu: 1
+    mem: 1024
+    replicas: 1
+    containers:
+      - name: coms/hercules-manager
+        cpu: 0.1
+        mem: 1024
+    envs:
+      system.region: zb
+      tianji.key: hercules-manager
+      tianji.secret: 1C744BDA482948DE91A481B3812D314E
+      otel.resource.attributes: service.name=hercules-manager_v1_qa,service.version=v1,host.name=k8s
+      HERCULES_ACTIVE_PROFILE: asics_qa
+  - name: asics_k8s_prod
+    cpu: 1
+    mem: 2048
+    replicas: 1
+    containers:
+      #这里修改成的格式为  组/项目模块名
+      - name: coms/hercules-manager
+        cpu: 0.1
+        mem: 1024
+        #系统环境变量的配置
+    envs:
+      HERCULES_ACTIVE_PROFILE: asics_prod
+      system.region: zb
+      tianji.key: hercules-manager
+      otel.resource.attributes: service.name=hercules-manager_v1_prod,service.version=v1,host.name=k8s
+

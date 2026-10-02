@@ -1,0 +1,42 @@
+SERVICE_NAME: hercules-executor
+API_VERSION: v1
+
+server:
+  port: 8080
+  servlet:
+    context-path: /${SERVICE_NAME}/${API_VERSION}
+#    context-path: /etlJobManager/v1
+#spring
+spring:
+#  profiles:
+#    active: qa
+  main:
+    allow-bean-definition-overriding: true
+#  profiles:
+#    include: http,rabbit,server
+  mvc:
+    throw-exception-if-no-handler-found: true
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    default-property-inclusion: NON_NULL
+  servlet:
+    multipart:
+      max-file-size: 500MB
+      max-request-size: 500MB
+  web:
+    resources:
+      add-mappings: false
+
+hercules:
+  security:
+    # AES GCM 256,Replace this KEY with the actual KEY in use
+    http-encrypt-key: "KHEV0o7G7pMARWUHjcpLOGnu2Nh7c9Rs0xPAsxJxGfw="
+
+
+feign:
+  retry:
+    maxAttempts: 5
+    period: 100
+    maxPeriod: 1000
+
+

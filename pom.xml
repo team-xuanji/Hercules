@@ -1,0 +1,169 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>team.magic-flute</groupId>
+  <artifactId>Hercules</artifactId>
+  <version>Nemean-Lion-1.0</version>
+  <packaging>pom</packaging>
+
+  <name>Hercules</name>
+  <url>https://maven.apache.org</url>
+    <modules>
+      <module>Hercules-service</module>
+      <module>Hercules-executor</module>
+      <module>Hercules-manager</module>
+      <module>Hercules-executor-plugin</module>
+      <module>Hercules-twelve-labors</module>
+      <module>Hercules-common</module>
+    </modules>
+
+  <properties>
+      <hercules.version>Nemean-Lion-1.0</hercules.version>
+      <maven.compiler.source>1.8</maven.compiler.source>
+      <maven.compiler.target>1.8</maven.compiler.target>
+      <uuid-creator.version>6.1.1</uuid-creator.version>
+      <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+      <commons-collections.version>4.5.0</commons-collections.version>
+      <aliyun-sdk-oss.version>3.13.2</aliyun-sdk-oss.version>
+      <aws.version>2.20.0</aws.version>
+      <auto-service.version>1.1.1</auto-service.version>
+      <commons-io.version>2.20.0</commons-io.version>
+      <fory.version>0.14.1</fory.version>
+      <aircompressor.version>2.0.2</aircompressor.version><!--This is the last version that supports JDK 1.8-->
+      <mysql-connector-java.version>8.0.33</mysql-connector-java.version>
+      <bouncycastle.version>1.83</bouncycastle.version>
+      <!-- spring -->
+      <spring-cloud.version>2021.0.8</spring-cloud.version>
+      <spring-boot.version>2.7.18</spring-boot.version>
+
+      <!-- DB -->
+      <mybatis-plus-boot-starter.version>3.5.14</mybatis-plus-boot-starter.version>
+      <mybatis-plus-generator.version>3.5.14</mybatis-plus-generator.version>
+      <duckdb.version>1.5.6.0</duckdb.version><!--For operating systems that only support GCC4, you need to compile a version of DuckDB (version ≤ 1.2.2.0) that supports GCC4 yourself.-->
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <optional>true</optional>
+    </dependency>
+  </dependencies>
+
+  <dependencyManagement>
+    <dependencies>
+
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk18on</artifactId>
+            <version>${bouncycastle.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <version>${aws.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.airlift</groupId>
+            <artifactId>aircompressor</artifactId>
+            <version>${aircompressor.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.fory</groupId>
+            <artifactId>fory-core</artifactId>
+            <version>${fory.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <version>${mysql-connector-java.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>${commons-io.version}</version>
+        </dependency>
+
+      <dependency>
+        <groupId>com.google.auto.service</groupId>
+        <artifactId>auto-service</artifactId>
+        <version>${auto-service.version}</version>
+<!--        <scope>provided</scope>-->
+      </dependency>
+
+      <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-dependencies</artifactId>
+        <version>${spring-cloud.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-dependencies</artifactId>
+        <version>${spring-boot.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+
+      <!-- mybatis-spring-starter -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-bom</artifactId>
+            <version>3.5.14</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+
+      <dependency>
+        <groupId>com.baomidou</groupId>
+        <artifactId>mybatis-plus-boot-starter</artifactId>
+        <version>${mybatis-plus-boot-starter.version}</version>
+      </dependency>
+      <!-- mybatis-code-generator -->
+      <dependency>
+        <groupId>com.baomidou</groupId>
+        <artifactId>mybatis-plus-generator</artifactId>
+        <version>${mybatis-plus-generator.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.duckdb</groupId>
+        <artifactId>duckdb_jdbc</artifactId>
+        <version>${duckdb.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.github.f4b6a3</groupId>
+        <artifactId>uuid-creator</artifactId>
+        <version>${uuid-creator.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-collections4</artifactId>
+        <version>${commons-collections.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>com.aliyun.oss</groupId>
+        <artifactId>aliyun-sdk-oss</artifactId>
+        <version>${aliyun-sdk-oss.version}</version>
+      </dependency>
+
+      <!--    <dependency>-->
+      <!--      <groupId>junit</groupId>-->
+      <!--      <artifactId>junit</artifactId>-->
+      <!--      <version>3.8.1</version>-->
+      <!--      <scope>test</scope>-->
+      <!--    </dependency>-->
+    </dependencies>
+  </dependencyManagement>
+
+
+</project>

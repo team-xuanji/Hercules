@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration debug="false">
+<!--    <property resource="application.yml"/>-->
+<!--    <springProperty scope="context" name="SERVICE_NAME" source="SERVICE_NAME"/>-->
+<!--    <springProperty scope="context" name="API_VERSION" source="API_VERSION"/>-->
+<!--    <springProperty scope="context" name="ENVIRONMENT" source="ENVIRONMENT"/>-->
+<!--    <springProperty scope="context" name="SANDBOX" source="SANDBOX"/>-->
+
+    <property name="LOG_FILE"
+              value="/var/log/${SERVICE_NAME}/${APP_VERSION}/${ENVIRONMENT}/${SANDBOX}/${MESOS_TASK_ID}"/>
+    <property name="LOG_BAK_FILE"
+              value="/var/logbak/${SERVICE_NAME}/${APP_VERSION}/${ENVIRONMENT}/${SANDBOX}/${MESOS_TASK_ID}"/>
+    <!-- Console output -->
+    <appender name="stdoutAppender" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <charset>UTF-8</charset>
+            <pattern>
+                [%d{yyyy-MM-dd HH:mm:ss.SSS}] [%-5level] [%X{trace_id}] [%class{0}:%method:%line] [%t] [-[%msg]-] %n
+            </pattern>
+        </encoder>
+    </appender>
+
+    <!-- root logger -->
+    <appender name="rootAppender" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_FILE}/${SERVICE_NAME}.log</file>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>
+                [%d{yyyy-MM-dd HH:mm:ss.SSS}] [%-5level] [%X{trace_id}] [%class{0}:%method:%line] [%t] [-[%msg]-] %n
+            </pattern>
+            <immediateFlush>true</immediateFlush>
+            <charset>UTF-8</charset>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_BAK_FILE}/${SERVICE_NAME}-%d{yyyy-MM-dd-HH}-%i.log</fileNamePattern>
+            <maxFileSize>300MB</maxFileSize>
+            <maxHistory>240</maxHistory>
+            <CleanHistoryOnStart>true</CleanHistoryOnStart>
+            <totalSizeCap>60GB</totalSizeCap>
+        </rollingPolicy>
+    </appender>
+
+    <!-- Error logger -->
+    <appender name="ERROR" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_FILE}/${SERVICE_NAME}.error.log</file>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>
+                [%d{yyyy-MM-dd HH:mm:ss.SSS}] [%-5level] [%X{trace_id}] [%class{0}:%method:%line] [%t] [-[%msg]-] %n
+            </pattern>
+            <immediateFlush>true</immediateFlush>
+            <charset>UTF-8</charset>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_BAK_FILE}/${SERVICE_NAME}.error-%d{yyyy-MM-dd-HH}-%i.log</fileNamePattern>
+            <maxFileSize>300MB</maxFileSize>
+            <maxHistory>240</maxHistory>
+            <CleanHistoryOnStart>true</CleanHistoryOnStart>
+            <totalSizeCap>60GB</totalSizeCap>
+        </rollingPolicy>
+    </appender>
+
+    <appender name="asyncRootAppender" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="rootAppender"/>
+        <queueSize>1024</queueSize>
+        <neverBlock>true</neverBlock>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="stdoutAppender"/>
+<!--        <appender-ref ref="asyncRootAppender"/>-->
+        <!--       自行选择开启或者关闭 <appender-ref ref="ERROR"/>-->
+    </root>
+
+</configuration>

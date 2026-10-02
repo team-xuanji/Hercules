@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    url: "jdbc:mysql://localhost:8080/cms_benefit_server?useUnicode=true&characterEncoding=utf8&autoReconnect=true&allowMultiQueries=true&nullCatalogMeansCurrent=true"
+    username: "xx"
+    password: "xxxx"
+
+
+api:
+  app-open-api:
+    host: http://qa-cem-openapi.asics.com.cn
+    name: hercules-manager
+    version: v1
+    caller: test
+    sign: 74657yKcwK48pARhJJK5B
+    headers:
+      whiteListAk: 1937007738505687040
+
+
+

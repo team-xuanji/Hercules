@@ -1,0 +1,65 @@
+SERVICE_NAME: hercules-manager
+API_VERSION: v1
+
+server:
+  port: 8080
+  servlet:
+    context-path: /${SERVICE_NAME}/${API_VERSION}
+#    context-path: /etlJobManager/v1
+#spring
+spring:
+#  profiles:
+#      active: qa
+  main:
+    allow-bean-definition-overriding: true
+#  profiles:
+#    include: http,rabbit,server
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    type: com.zaxxer.hikari.HikariDataSource
+    hikari:
+      minimum-idle: 1
+      maximum-pool-size: 10
+      auto-commit: true
+      idle-timeout: 60000
+      pool-name: HerculesHikariCP
+      max-lifetime: 600000
+      connection-timeout: 30000
+      connection-test-query: SELECT 1
+#    schema: classpath:init.sql
+#    initialization-mode: always
+  mvc:
+    throw-exception-if-no-handler-found: true
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    default-property-inclusion: NON_NULL
+  servlet:
+    multipart:
+      max-file-size: 500MB
+      max-request-size: 500MB
+  web:
+    resources:
+      add-mappings: false
+#mybatis
+mybatis-plus:
+  mapper-locations: classpath:/mapper/*Mapper.xml
+  #Entity scan, multiple packages separated by commas or semicolons.
+  typeAliasesPackage: team.magic.flute.hercules.manager.dao.po
+#  typeEnumsPackage: team.magic.flute.hercules.manager.enumeration
+  global-config:
+    db-config:
+      #Primary key type 0: "Auto-increment database ID", 1: "User-input ID", 2: "Globally unique ID (numeric unique ID)", 3: "Globally unique ID UUID";
+      id-type: AUTO
+      logic-delete-value: Y
+      logic-not-delete-value: N
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: false
+#    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+
+hercules:
+  security:
+    # AES GCM 256,Replace this KEY with the actual KEY in use
+    http-encrypt-key: "KHEV0o7G7pMARWUHjcpLOGnu2Nh7c9Rs0xPAsxJxGfw="
+

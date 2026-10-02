@@ -1,0 +1,18 @@
+file-storage:
+  oss:
+    endpoint: "oss-cn-zhangjiakou.aliyuncs.com"
+    bucket: "xx-cem-qa"
+    access: "xx"
+    secret: "xx"
+    root-path: "hercules/qa/plugin/"
+    support-http-download: false
+
+api:
+  app-open-api:
+    host: http://qa-cem-openapi.asics.com.cn
+    name: hercules-manager
+    version: v1
+    caller: test
+    sign: 74657yKcwK48pARhJJK5B
+    headers:
+      whiteListAk: 1937007738505687040

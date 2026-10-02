@@ -1,0 +1,129 @@
+package team.magic.flute.hercules.manager.controller;
+
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+import team.magic.flute.hercules.common.http.BaseResponse;
+import team.magic.flute.hercules.common.http.HerculesRunnableTaskInfo;
+import team.magic.flute.hercules.common.util.StrFormat;
+import team.magic.flute.hercules.manager.service.HerculesCronJobManagerService;
+import team.magic.flute.hercules.manager.service.HerculesExecutorInfoService;
+import team.magic.flute.hercules.manager.vo.CronJobDefineRequestVO;
+import team.magic.flute.hercules.manager.vo.HerculesCronJobVO;
+
+import javax.validation.Valid;
+import java.util.Collection;
+import java.util.List;
+
+/**
+ * Scheduled Task Management Controller
+ *
+ * <p>This controller provides REST APIs for managing scheduled (cron) tasks in Hercules, including:
+ * <ul>
+ *   <li>Creating and updating cron job definitions</li>
+ *   <li>Enabling and disabling scheduled tasks</li>
+ *   <li>Deleting cron jobs</li>
+ *   <li>Viewing recent task executions for a cron job</li>
+ * </ul>
+ *
+ * <p>Cron jobs are defined using standard cron expressions and can be managed through
+ * these endpoints to control their execution schedule and lifecycle.
+ *
+ * @author Hercules Team
+ * @version 1.0
+ * @since 1.0
+ */
+@RestController
+@RequestMapping("/cronTaskManager")
+public class CronTaskManager {
+
+    @Autowired
+    private HerculesCronJobManagerService cronJobManagerService;
+    @Autowired
+    private HerculesExecutorInfoService executorInfoService;
+
+
+    /**
+     * Create a new cron job or update an existing one.
+     *
+     * <p>This endpoint accepts a cron job definition including the schedule expression,
+     * plugin information, and execution context. If a job with the same ID exists,
+     * it will be updated; otherwise, a new job will be created.
+     *
+     * @param requestVO the cron job definition request
+     * @return BaseResponse containing the created or updated cron job information
+     */
+    @PostMapping("/createOrUpdate")
+    public BaseResponse<HerculesCronJobVO> createOrUpdateCronJob(@RequestBody @Valid CronJobDefineRequestVO requestVO){
+        if(StringUtils.isNotBlank(requestVO.getExecutorRegion())){
+            if(!executorInfoService.getAllAvailableExecutorRegion().contains(requestVO.getExecutorRegion())){
+                return BaseResponse.fail("No executor is available to handle this business scenario ["+requestVO.getExecutorRegion()+"]");
+            }
+            if(requestVO.getPluginHandle()!=null){
+                Collection<String> whiteList = executorInfoService.getPluginHandleWhiteListByExecutorRegion(requestVO.getExecutorRegion());
+                if(whiteList!=null && !whiteList.isEmpty() && !whiteList.contains(requestVO.getPluginHandle())){
+                    return BaseResponse.fail(StrFormat.format("The executor has set a whitelist and cannot execute the plugin [{}]! Whitelist information: [{}].",requestVO.getPluginHandle(),whiteList));
+                }
+            }
+        }
+        return cronJobManagerService.createOrUpdateCronJob(requestVO);
+    }
+
+    /**
+     * Enable a scheduled cron job.
+     *
+     * <p>Enables the specified cron job to start executing according to its schedule.
+     * Enabled jobs will be picked up by the scheduler for execution.
+     *
+     * @param jobId the unique identifier of the cron job to enable
+     * @return BaseResponse indicating success or failure of the operation
+     */
+    @PutMapping("/enable")
+    public BaseResponse<Boolean> enableCronJob(@RequestParam(name="jobId") String jobId){
+        return cronJobManagerService.enableCronJob(jobId);
+    }
+
+    /**
+     * Disable a scheduled cron job.
+     *
+     * <p>Disables the specified cron job to prevent it from executing.
+     * Disabled jobs will not be scheduled for execution until re-enabled.
+     *
+     * @param jobId the unique identifier of the cron job to disable
+     * @return BaseResponse indicating success or failure of the operation
+     */
+    @PutMapping("/disable")
+    public BaseResponse<Boolean> disableCronJob(@RequestParam(name="jobId") String jobId){
+        return cronJobManagerService.disableCronJob(jobId);
+    }
+
+    /**
+     * Delete a cron job permanently.
+     *
+     * <p>Removes the specified cron job from the system. This operation cannot be undone.
+     * The job will no longer be scheduled for execution and its definition will be removed.
+     *
+     * @param jobId the unique identifier of the cron job to delete
+     * @return BaseResponse indicating success or failure of the operation
+     */
+    @DeleteMapping("/delete")
+    public BaseResponse<Boolean> deleteCronJob(@RequestParam(name="jobId") String jobId){
+        return cronJobManagerService.deleteCronJob(jobId);
+    }
+
+    /**
+     * Show the top N recent task executions for a cron job.
+     *
+     * <p>Retrieves the most recent task executions generated by the specified cron job.
+     * This is useful for monitoring the execution history and status of scheduled tasks.
+     *
+     * @param jobId the unique identifier of the cron job
+     * @param topN the number of recent tasks to retrieve (default: 20)
+     * @return BaseResponse containing a list of recent task executions
+     */
+    @GetMapping("/showTopNCronTask")
+    public BaseResponse<List<HerculesRunnableTaskInfo>> showTopNCronTask(@RequestParam(name="jobId") String jobId,
+                                                                         @RequestParam(name="topN",defaultValue = "20") Integer topN){
+        return cronJobManagerService.showTopNCronTask(jobId,topN);
+    }
+}

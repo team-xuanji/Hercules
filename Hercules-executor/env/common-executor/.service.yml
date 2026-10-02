@@ -1,0 +1,43 @@
+kind: Service
+specVersion: v4
+metadata:
+ name: hercules-executor
+ apiVersion: "v1"
+ accessPoint:
+  container: coms/hercules-executor
+containers:
+ - name: coms/hercules-executor
+   imagePullPolicy: PullIfNotPresent
+   ports:
+    - name: hercules-executor
+      protocol: tcp
+      targetPort: 0
+      containerPort: 8080
+profiles:
+  - name: asics_k8s_qa
+    cpu: 1
+    mem: 2048
+    replicas: 1
+    containers:
+      - name: coms/hercules-executor
+        cpu: 0.1
+        mem: 1024
+    envs:
+      system.region: zb
+      HERCULES_ACTIVE_PROFILE: asics_qa
+      tianji.key: hercules-executor
+      tianji.secret: 1C744BDA482948DE91A481B3812D314E
+      otel.resource.attributes: service.name=hercules-executor_v1_qa,service.version=v1,host.name=k8s
+  - name: asics_k8s_prod
+    cpu: 4
+    mem: 4096
+    replicas: 1
+    containers:
+      - name: coms/hercules-executor
+        cpu: 0.1
+        mem: 1024
+    envs:
+      system.region: zb
+      HERCULES_ACTIVE_PROFILE: asics_prod
+      tianji.key: hercules-executor
+      otel.resource.attributes: service.name=hercules-executor_v1_prod,service.version=v1,host.name=k8s
