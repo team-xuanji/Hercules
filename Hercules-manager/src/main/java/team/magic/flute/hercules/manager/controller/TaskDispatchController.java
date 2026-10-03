@@ -12,12 +12,14 @@ import org.springframework.web.bind.annotation.*;
 import team.magic.flute.hercules.common.http.BaseResponse;
 import team.magic.flute.hercules.common.http.HerculesHttpCompressType;
 import team.magic.flute.hercules.common.http.HerculesRunnableTaskInfo;
+import team.magic.flute.hercules.common.plugin.PluginResourceInfo;
 import team.magic.flute.hercules.common.status.TaskStatus;
 import team.magic.flute.hercules.common.util.*;
 import team.magic.flute.hercules.manager.config.RunnerEnv;
 import team.magic.flute.hercules.manager.dao.po.HerculesTaskInfo;
 import team.magic.flute.hercules.manager.service.HerculesExecutorInfoService;
 import team.magic.flute.hercules.manager.service.HerculesExecutorTasksService;
+import team.magic.flute.hercules.manager.service.HerculesPluginManagerService;
 import team.magic.flute.hercules.manager.util.DTOConvertUtils;
 import team.magic.flute.hercules.manager.vo.FinishOneTaskRequestVO;
 
@@ -26,6 +28,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static team.magic.flute.hercules.common.global.Constant.*;
@@ -47,6 +50,8 @@ public class TaskDispatchController {
 
     @Autowired
     private RunnerEnv runnerEnv;
+    @Autowired
+    private HerculesPluginManagerService pluginManagerService;
 
 
     private List<HerculesRunnableTaskInfo> fetchTasks(String executorId,
@@ -138,8 +143,48 @@ public class TaskDispatchController {
     public BaseResponse<Boolean> tryLockOneTask(@RequestParam("executorId") String executorId,
                                                 @RequestParam("executorRegion") String executorRegion,
                                                 @RequestParam("taskId") String taskId){
+        HerculesTaskInfo taskInfo = executorTasksService.getById(taskId);
+        if(taskInfo==null){
+            return BaseResponse.fail(StrFormat.format("Task does not exist! TaskId = [{}]", taskId));
+        }
         if(executorInfoService.getById(executorId)==null){
-            return BaseResponse.fail(StrFormat.format("The executor does not exist or has not reported any information. ExecutorId = [{}]",executorId));
+            return BaseResponse.fail(StrFormat.format("Unknown executor [{}], lock refused.", executorId));
+        }
+        String pluginGroup = taskInfo.getPluginGroup();
+        String pluginHandle =taskInfo.getPluginHandle();
+        PluginResourceInfo pluginResourceInfo = null;
+        try {
+            pluginResourceInfo = pluginManagerService.searchPlugin(pluginHandle, pluginGroup);
+        } catch (Exception e) {
+            log.error("Plugin registry lookup failed at lock attempt, task [{}] lock refused without cancellation.", taskId, e);
+            return BaseResponse.fail(StrFormat.format("Registry temporarily unverifiable, task [{}] lock refused.", taskId));
+        }
+        if(!Objects.equals(taskInfo.getExecutorRegion(),executorRegion)){
+            return BaseResponse.fail(StrFormat.format("Region mismatch: task [{}] belongs to [{}], not [{}].", taskId, taskInfo.getExecutorRegion(), executorRegion));
+        }
+        /*
+        * Considering that users may re-register plugins and modify the mapping between
+        * pluginGroup and PluginHandle, we should reject tasks that use an incorrect mapping.
+        * As for tasks already sent to the executor, because the executor retains old class loaders,
+        * and given that plugin registration is a low-frequency operation, the old historical tasks
+        * currently executing in the executor can theoretically run to completion. Of course,
+        * the executor currently retains at most 3 historical versions of old class loaders.
+        * If plugins are registered frequently, the executor will rotate out old class loaders,
+        * causing the executing task to fail. After the task is handled by fault tolerance,
+        * it should theoretically request the tryLockOneTask method again;
+        * at that point we can handle it correctly.
+        * */
+        if(pluginResourceInfo==null || pluginResourceInfo.getResources()==null || pluginResourceInfo.getResources().isEmpty()){
+            String info = StrFormat.format("PLUGIN_DRIFTED: handle [{}] not registered under group [{}] at lock attempt; task cancelled.",pluginHandle,pluginGroup);
+            LambdaUpdateWrapper<HerculesTaskInfo> failedStatUpdateWrapper = new LambdaUpdateWrapper<HerculesTaskInfo>()
+                    .eq(HerculesTaskInfo::getId,taskId)
+                    .eq(HerculesTaskInfo::getStatus, TaskStatus.INIT.name())
+                    .eq(HerculesTaskInfo::isEnable,true)
+                    .set(HerculesTaskInfo::getStatus, TaskStatus.CANCELLED.name())
+                    .set(HerculesTaskInfo::getOwnerId,null)
+                    .set(HerculesTaskInfo::getCheckPointInfo,info);
+            executorTasksService.update(failedStatUpdateWrapper);
+            return BaseResponse.fail(info);
         }
         LambdaUpdateWrapper<HerculesTaskInfo> updateWrapper = new LambdaUpdateWrapper<HerculesTaskInfo>()
                 .eq(HerculesTaskInfo::getId,taskId)

@@ -44,11 +44,12 @@ public class HerculesTaskManagerServiceImpl implements HerculesTaskManagerServic
         HerculesTaskInfo taskInfo = submitTaskRequestVO.parse2TaskInfo(runnerEnv.getHttpEncryptKey());
         String pluginGroup = submitTaskRequestVO.getPluginGroup();
         String pluginHandle = submitTaskRequestVO.getPluginHandle();
+        String executorRegion = submitTaskRequestVO.getExecutorRegion();
         PluginResourceInfo resourceInfo = pluginManagerService.searchPlugin(pluginHandle,pluginGroup);
         if(resourceInfo == null || resourceInfo.getResources()==null || resourceInfo.getResources().isEmpty()){
             return BaseResponse.fail(StrFormat.format("Tasks may not be submitted unless the corresponding plugin is registered.PluginGroup[{}],PluginHandle[{}]",pluginGroup,pluginHandle));
         }
-        if(executorInfoService.getAllAvailableExecutorRegion().contains(taskInfo.getExecutorRegion())){
+        if(executorInfoService.getAllAvailableExecutorRegion().contains(executorRegion)){
             Collection<String> whiteList = executorInfoService.getPluginHandleWhiteListByExecutorRegion(taskInfo.getExecutorRegion());
             if(whiteList == null || whiteList.isEmpty() || whiteList.contains(taskInfo.getPluginHandle())){
                 executorTasksService.save(taskInfo);
