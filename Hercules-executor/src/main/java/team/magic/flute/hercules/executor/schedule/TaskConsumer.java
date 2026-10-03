@@ -10,6 +10,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import team.magic.flute.hercules.common.executor.ExecutorCurrentLoadPluginInfo;
+import team.magic.flute.hercules.common.executor.HerculesExecutorHeartbeatInfo;
 import team.magic.flute.hercules.common.http.BaseResponse;
 import team.magic.flute.hercules.common.http.HerculesRunnableTaskInfo;
 import team.magic.flute.hercules.common.util.JacksonUtils;
@@ -70,7 +71,7 @@ public class TaskConsumer {
     public void reportInfo(){
         if(reportLock.tryLock()){
             try{
-                ExecutorInfoReportRequestVO requestVO = new ExecutorInfoReportRequestVO()
+                HerculesExecutorHeartbeatInfo requestVO = new HerculesExecutorHeartbeatInfo()
                         .setExecutorId(runnerEnv.getRunnerInstanceId())
                         .setExecutorRegion(runnerEnv.getExecutorRegion())
                         .setExecutorRegionDesc(runnerEnv.getExecutorRegionDesc())
@@ -79,9 +80,12 @@ public class TaskConsumer {
                         .setExecutorLoadPluginInfo(new ExecutorCurrentLoadPluginInfo()
                                 .setPluginMap(executorProcessHandle.showCurrentLoadPlugin())
                         )
+                        .setEnableDuckdb(runnerEnv.isEnableDuckdb())
                         .setExecutorPluginHandleWhiteList(runnerEnv.getPluginWhiteList());
                 log.debug("Start reporting executor info.info: {}", JacksonUtils.writeValueAsString(requestVO));
-                BaseResponse<Boolean>  result = managerApi.reportExecutorInfo(requestVO);
+                ExecutorInfoReportRequestVO reportRequestVO = new ExecutorInfoReportRequestVO();
+                reportRequestVO.fillRequestVO(requestVO,runnerEnv.getHttpEncryptKey());
+                BaseResponse<Boolean>  result = managerApi.reportExecutorInfo(reportRequestVO);
                 if(Boolean.TRUE.equals(result.getData()) && !reportSuccess){
                     reportSuccess = true;
                 }

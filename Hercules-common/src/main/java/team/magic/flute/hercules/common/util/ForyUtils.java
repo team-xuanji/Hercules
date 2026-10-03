@@ -5,6 +5,9 @@ import org.apache.fory.Fory;
 import org.apache.fory.ThreadLocalFory;
 import org.apache.fory.ThreadSafeFory;
 import org.apache.fory.config.Language;
+import team.magic.flute.hercules.common.executor.ExecutorCurrentLoadPluginInfo;
+import team.magic.flute.hercules.common.executor.HerculesExecutorHeartbeatInfo;
+import team.magic.flute.hercules.common.executor.PluginDesc;
 import team.magic.flute.hercules.common.http.HerculesRunnableTaskInfo;
 import team.magic.flute.hercules.common.status.TaskType;
 
@@ -26,6 +29,10 @@ public class ForyUtils {
             // Registering types can reduce class name serialization overhead, but not mandatory.
             // If secure mode enabled, all custom types must be registered.
             f.register(HerculesRunnableTaskInfo.class);
+            f.register(HerculesExecutorHeartbeatInfo.class);
+            f.register(HerculesExecutorHeartbeatInfo.class);
+            f.register(ExecutorCurrentLoadPluginInfo.class);
+            f.register(PluginDesc.class);
             f.register(List.class);
             f.register(ArrayList.class);
             f.register(Collection.class);

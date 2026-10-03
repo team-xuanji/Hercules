@@ -3,46 +3,45 @@ package team.magic.flute.hercules.manager.vo;
 
 import lombok.Data;
 import lombok.experimental.Accessors;
-import team.magic.flute.hercules.common.executor.ExecutorCurrentLoadPluginInfo;
 import team.magic.flute.hercules.common.executor.ExecutorProcessHandleWhiteList;
+import team.magic.flute.hercules.common.executor.HerculesExecutorHeartbeatInfo;
+import team.magic.flute.hercules.common.http.HerculesHttpCompressType;
+import team.magic.flute.hercules.common.util.AESUtils;
+import team.magic.flute.hercules.common.util.BinaryCompressUtils;
+import team.magic.flute.hercules.common.util.ForyUtils;
 import team.magic.flute.hercules.manager.dao.po.HerculesExecutorInfo;
 
 import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Data
 @Accessors(chain = true)
 public class ExecutorInfoReportRequestVO {
 
-    @NotBlank(message = "Executor Instance Id can not be empty")
-    private String executorId;
 
-    @NotBlank(message = "Executor Region Id can not be empty")
-    private String executorRegion;
+    @NotBlank(message = "AesIV can not be empty")
+    private String aesIV;
+    @NotNull
+    private byte[] reportInfo;
+    private int originalLength;
+    @NotBlank(message = "compressTypeStr can not be empty")
+    private String compressTypeStr;
 
-    private String executorRegionDesc;
-
-    private Integer executorMaxSlot;
-
-    private Integer executorAvailableSlot;
-
-    private boolean enableDuckdb=true;
-
-    private ExecutorCurrentLoadPluginInfo executorLoadPluginInfo;
-
-    private List<String> executorPluginHandleWhiteList;
-
-    public HerculesExecutorInfo parse2Po(){
+    public HerculesExecutorInfo parse2Po(String aesKey){
+        byte [] data = AESUtils.decrypt(reportInfo,aesKey,aesIV);
+        HerculesHttpCompressType compressType = HerculesHttpCompressType.valueOf(compressTypeStr);
+        data = BinaryCompressUtils.deCompress(data,compressType,originalLength);
+        HerculesExecutorHeartbeatInfo heartbeatInfo = ForyUtils.deserialize(data, HerculesExecutorHeartbeatInfo.class);
         return new HerculesExecutorInfo()
-                .setExecutorId(executorId)
-                .setExecutorRegion(executorRegion)
-                .setExecutorRegionDesc(executorRegionDesc)
-                .setExecutorMaxSlot(executorMaxSlot)
-                .setExecutorAvailableSlot(executorAvailableSlot)
-                .setEnableDuckdb(enableDuckdb)
-                .setExecutorLoadPluginInfo(executorLoadPluginInfo)
-                .setExecutorPluginHandleWhiteList(new ExecutorProcessHandleWhiteList().setWhiteList(executorPluginHandleWhiteList))
+                .setExecutorId(heartbeatInfo.getExecutorId())
+                .setExecutorRegion(heartbeatInfo.getExecutorRegion())
+                .setExecutorRegionDesc(heartbeatInfo.getExecutorRegionDesc())
+                .setExecutorMaxSlot(heartbeatInfo.getExecutorMaxSlot())
+                .setExecutorAvailableSlot(heartbeatInfo.getExecutorAvailableSlot())
+                .setEnableDuckdb(heartbeatInfo.isEnableDuckdb())
+                .setExecutorLoadPluginInfo(heartbeatInfo.getExecutorLoadPluginInfo())
+                .setExecutorPluginHandleWhiteList(new ExecutorProcessHandleWhiteList().setWhiteList(heartbeatInfo.getExecutorPluginHandleWhiteList()))
                 .setInsertTime(LocalDateTime.now())
                 .setUpdateTime(LocalDateTime.now());
     }
