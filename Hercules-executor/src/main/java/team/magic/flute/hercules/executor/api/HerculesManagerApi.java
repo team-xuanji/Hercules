@@ -50,15 +50,6 @@ public interface HerculesManagerApi {
             ExecutorInfoReportRequestVO requestVO
     );
 
-    @RequestLine("GET /taskDispatch/tryFetchTasks?executorRegion={executorRegion}&executorId={executorId}&fetchLimit={fetchLimit}")
-    @Headers("Content-Type: application/json;charset=UTF-8")
-    @Deprecated
-    BaseResponse<Collection<HerculesRunnableTaskInfo>> tryFetchTasks(
-            @Param("executorRegion")String executorRegion,
-            @Param("executorId")String executorId,
-            @Param("fetchLimit")Integer fetchLimit
-    );
-
     /**
      * We use a serialization framework to directly transmit byte arrays,
      * avoiding the performance overhead caused by JSON serialization.

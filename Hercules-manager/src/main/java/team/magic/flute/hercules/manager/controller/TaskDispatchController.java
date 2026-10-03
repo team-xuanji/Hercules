@@ -126,19 +126,6 @@ public class TaskDispatchController {
         return headers;
     }
 
-    @GetMapping("/tryFetchTasks")
-    public BaseResponse<Collection<HerculesRunnableTaskInfo>> tryFetchTasks(@RequestParam("executorId") String executorId,
-                                                                            @RequestParam("executorRegion") String executorRegion,
-                                                                            @RequestParam(value = "fetchLimit",required = false) Integer fetchLimit){
-        if(executorInfoService.getById(executorId)==null){
-            return BaseResponse.fail(StrFormat.format("The executor does not exist or has not reported any information. ExecutorId = [{}]",executorId));
-        }
-        if(fetchLimit==null || fetchLimit<=0){
-            fetchLimit = 10;
-        }
-        return BaseResponse.success(fetchTasks(executorId, executorRegion, fetchLimit, true));
-    }
-
     @PutMapping("/tryLockOneTask")
     public BaseResponse<Boolean> tryLockOneTask(@RequestParam("executorId") String executorId,
                                                 @RequestParam("executorRegion") String executorRegion,
