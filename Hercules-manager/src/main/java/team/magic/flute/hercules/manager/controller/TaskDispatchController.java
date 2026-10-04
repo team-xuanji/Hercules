@@ -134,7 +134,7 @@ public class TaskDispatchController {
                                                 @RequestParam("executorRegion") String executorRegion,
                                                 @RequestParam("taskId") String taskId){
 
-        if (verifyExecutorInfo(executorId,taskId,passSign,ExecutorTaskOps.LOCK,executorRegion)) {
+        if (isInvalidExecutorOp(executorId,taskId,passSign,ExecutorTaskOps.LOCK,executorRegion)) {
             return BaseResponse.fail("Invalid executor identity signature.");
         }
         HerculesTaskInfo taskInfo = executorTasksService.getById(taskId);
@@ -190,7 +190,7 @@ public class TaskDispatchController {
 
     @PutMapping("/finishOneTask")
     public BaseResponse<Boolean> finishOneTask(@Valid @RequestBody FinishOneTaskRequestVO requestVO){
-        if (verifyExecutorInfo(requestVO.getExecutorId(),requestVO.getTaskId(),requestVO.getPassSign(),ExecutorTaskOps.FINISH,null)) {
+        if (isInvalidExecutorOp(requestVO.getExecutorId(),requestVO.getTaskId(),requestVO.getPassSign(),ExecutorTaskOps.FINISH,null)) {
             return BaseResponse.fail("Invalid executor identity signature.");
         }
         LambdaUpdateWrapper<HerculesTaskInfo> updateWrapper = new LambdaUpdateWrapper<HerculesTaskInfo>()
@@ -206,7 +206,7 @@ public class TaskDispatchController {
     public BaseResponse<Boolean> abandonOneTask(@RequestParam("executorId") String executorId,
                                                 @RequestParam("taskId") String taskId,
                                                 @RequestParam("passSign") String passSign){
-        if (verifyExecutorInfo(executorId,taskId,passSign,ExecutorTaskOps.ABANDON,null)) {
+        if (isInvalidExecutorOp(executorId,taskId,passSign,ExecutorTaskOps.ABANDON,null)) {
             return BaseResponse.fail("Invalid executor identity signature.");
         }
         LambdaUpdateWrapper<HerculesTaskInfo> updateWrapper = new LambdaUpdateWrapper<HerculesTaskInfo>()
@@ -222,7 +222,7 @@ public class TaskDispatchController {
     public BaseResponse<Boolean> failOneTask(@RequestParam("executorId") String executorId,
                                              @RequestParam("taskId") String taskId,
                                              @RequestParam("passSign") String passSign){
-        if (verifyExecutorInfo(executorId,taskId,passSign,ExecutorTaskOps.FAIL,null)) {
+        if (isInvalidExecutorOp(executorId,taskId,passSign,ExecutorTaskOps.FAIL,null)) {
             return BaseResponse.fail("Invalid executor identity signature.");
         }
         HerculesTaskInfo taskInfo = executorTasksService.getById(taskId);
@@ -238,19 +238,29 @@ public class TaskDispatchController {
         return BaseResponse.success(executorTasksService.update(updateWrapper));
     }
 
-    private boolean verifyExecutorInfo(String executorId,
-                                       String taskId,
-                                       String passSign,
-                                       ExecutorTaskOps ops,
-                                       String executorRegion){
+    private boolean isInvalidExecutorOp(String executorId,
+                                        String taskId,
+                                        String passSign,
+                                        ExecutorTaskOps ops,
+                                        String executorRegion){
         HerculesExecutorInfo executor = executorInfoService.getById(executorId);
-        boolean executorNotExists = executor == null;
-        boolean executorRegionMissMatch = executor!=null && StringUtils.isNotBlank(executorRegion) && !Objects.equals(executor.getExecutorRegion(),executorRegion);
-        boolean passSignMissMatch = executor!=null && !ExecutorInfoUtils.verifyExecutorSign(executor.getIdentityId(),
-                taskId,
-                ops,
-                passSign);
-        return executorNotExists || executorRegionMissMatch || passSignMissMatch;
+        if (executor == null) {
+            log.warn("[INVALID_EXECUTOR_OP] Unknown executor [{}] attempted op [{}] on task [{}].",
+                    executorId, ops, taskId);
+            return true;
+        }
+        if (StringUtils.isNotBlank(executorRegion)
+                && !Objects.equals(executor.getExecutorRegion(), executorRegion)) {
+            log.warn("[INVALID_EXECUTOR_OP] Region mismatch: executor [{}] registered in [{}], claimed [{}], op [{}], task [{}].",
+                    executorId, executor.getExecutorRegion(), executorRegion, ops, taskId);
+            return true;
+        }
+        if (!ExecutorInfoUtils.verifyExecutorSign(executor.getIdentityId(), taskId, ops, passSign)) {
+            log.warn("[INVALID_EXECUTOR_OP] Signature verification failed: executor [{}], op [{}], task [{}].",
+                    executorId, ops, taskId);
+            return true;
+        }
+        return false;
     }
 
 }
