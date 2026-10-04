@@ -62,10 +62,11 @@ public interface HerculesManagerApi {
             String executorRegion,
             String executorId,
             Integer fetchLimit,
-            String aesKey
+            String aesKey,
+            String passSign
     ) {
         byte [] data = new byte[0];
-        try (Response response = tryFetchTasksWithByteArray(executorRegion, executorId, fetchLimit)) {
+        try (Response response = tryFetchTasksWithByteArray(executorRegion, executorId, fetchLimit, passSign)) {
             if (response.status() == 200) {
                 Response.Body body = response.body();
                 if (body != null) {
@@ -97,12 +98,13 @@ public interface HerculesManagerApi {
         return ForyUtils.deserialize(data, Collection.class);
     }
 
-    @RequestLine("GET /taskDispatch/tryFetchTasksWithByteArray?executorRegion={executorRegion}&executorId={executorId}&fetchLimit={fetchLimit}")
+    @RequestLine("GET /taskDispatch/tryFetchTasksWithByteArray?executorRegion={executorRegion}&executorId={executorId}&fetchLimit={fetchLimit}&passSign={passSign}")
     @Headers("Content-Type: application/octet-stream")
     Response tryFetchTasksWithByteArray(
             @Param("executorRegion")String executorRegion,
             @Param("executorId")String executorId,
-            @Param("fetchLimit")Integer fetchLimit
+            @Param("fetchLimit")Integer fetchLimit,
+            @Param("passSign") String passSign
     );
 
     @RequestLine("PUT /taskDispatch/tryLockOneTask?executorRegion={executorRegion}&executorId={executorId}&taskId={taskId}&passSign={passSign}")

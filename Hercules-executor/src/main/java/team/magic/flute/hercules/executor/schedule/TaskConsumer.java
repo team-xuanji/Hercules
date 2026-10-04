@@ -150,7 +150,8 @@ public class TaskConsumer {
                     runnerEnv.getExecutorRegion(),
                     runnerEnv.getRunnerInstanceId(),
                     100,
-                    runnerEnv.getHttpEncryptKey());
+                    runnerEnv.getHttpEncryptKey(),
+                    ExecutorInfoUtils.getExecutorSign(runnerEnv.getRunnerIdentityId(),runnerEnv.getRunnerInstanceId(),ExecutorTaskOps.FETCH));
             if(CollectionUtils.isEmpty(taskInfoResp)){
                 log.info("There are no tasks to process.");
                 // When unable to obtain a task, reduce the fetch frequency.

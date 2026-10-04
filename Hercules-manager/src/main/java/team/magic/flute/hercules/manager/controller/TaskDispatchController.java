@@ -83,10 +83,12 @@ public class TaskDispatchController {
     @GetMapping("/tryFetchTasksWithByteArray")
     public ResponseEntity<byte[]> tryFetchTasksWithByteArray(@RequestParam("executorId") String executorId,
                                                              @RequestParam("executorRegion") String executorRegion,
-                                                             @RequestParam(value = "fetchLimit",required = false) Integer fetchLimit){
-        if(executorInfoService.getById(executorId)==null){
+                                                             @RequestParam(value = "fetchLimit",required = false) Integer fetchLimit,
+                                                             @RequestParam("passSign") String passSign){
+        if (isInvalidExecutorOp(executorId,executorId,passSign,ExecutorTaskOps.FETCH,executorRegion)) {
             return  ResponseEntity.badRequest()
-                    .body(StrFormat.format("The executor does not exist or has not reported any information. ExecutorId = [{}]",executorId).getBytes(StandardCharsets.UTF_8));
+                    .body("Invalid executor identity signature.".getBytes(StandardCharsets.UTF_8));
+
         }
         if(fetchLimit==null || fetchLimit<=0){
             fetchLimit = 10;
