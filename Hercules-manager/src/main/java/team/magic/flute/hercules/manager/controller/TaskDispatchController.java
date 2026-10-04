@@ -246,27 +246,32 @@ public class TaskDispatchController {
      * and identityId and re-registers. This check binds operations to the region
      * the instance was deployed as. Who may deploy an executor as region X is
      * governed by config management / infra, same division as the admin plane.
+     *
+     * <p>{@code subject} is the operation subject the signature is bound to:
+     * the taskId for task ops, the executorId for FETCH (which has no task).
+     * It is logged as "subject" rather than "task" so fetch rejections are not
+     * misread.
      */
     private boolean isInvalidExecutorOp(String executorId,
-                                        String taskId,
+                                        String subject,
                                         String passSign,
                                         ExecutorTaskOps ops,
                                         String executorRegion){
         HerculesExecutorInfo executor = executorInfoService.getById(executorId);
         if (executor == null) {
-            log.warn("[INVALID_EXECUTOR_OP] Unknown executor [{}] attempted op [{}] on task [{}].",
-                    executorId, ops, taskId);
+            log.warn("[INVALID_EXECUTOR_OP] Unknown executor [{}] attempted op [{}] subject [{}].",
+                    executorId, ops, subject);
             return true;
         }
         if (StringUtils.isNotBlank(executorRegion)
                 && !Objects.equals(executor.getExecutorRegion(), executorRegion)) {
-            log.warn("[INVALID_EXECUTOR_OP] Region mismatch: executor [{}] registered in [{}], claimed [{}], op [{}], task [{}].",
-                    executorId, executor.getExecutorRegion(), executorRegion, ops, taskId);
+            log.warn("[INVALID_EXECUTOR_OP] Region mismatch: executor [{}] registered in [{}], claimed [{}], op [{}], subject [{}].",
+                    executorId, executor.getExecutorRegion(), executorRegion, ops, subject);
             return true;
         }
-        if (!ExecutorInfoUtils.verifyExecutorSign(executor.getIdentityId(), taskId, ops, passSign)) {
-            log.warn("[INVALID_EXECUTOR_OP] Signature verification failed: executor [{}], op [{}], task [{}].",
-                    executorId, ops, taskId);
+        if (!ExecutorInfoUtils.verifyExecutorSign(executor.getIdentityId(), subject, ops, passSign)) {
+            log.warn("[INVALID_EXECUTOR_OP] Signature verification failed: executor [{}], op [{}], subject [{}].",
+                    executorId, ops, subject);
             return true;
         }
         return false;

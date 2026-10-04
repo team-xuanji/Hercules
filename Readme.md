@@ -26,7 +26,7 @@ The whole system rests on one humble premise — you already have a MySQL. From 
 
 - **Locks out of the database**: a conditional UPDATE *is* a distributed lock; MySQL's atomicity *is* the mutual exclusion.
 - **Elections out of heartbeats**: oldest living instance wins, UUIDv7 ordering is good enough.
-- **Identity out of self-minting + HMAC**: each executor generates its own identity at boot and registers it via encrypted heartbeat — TOFU under a DB-trusted threat model; every mutation is then HMAC-signed per instance.
+- **Identity out of self-minting + HMAC**: each executor generates its own identity at boot and registers it via encrypted heartbeat — TOFU under a DB-trusted threat model; every operation is then HMAC-signed per instance.
 - **Compute out of embedded DuckDB**: executors carry their own OLAP engine — no external warehouse required, and each executor can enable or disable it per deployment.
 - **Scheduling out of slots**: executors advertise their capacity over heartbeat and only pull work while they have a free slot — a deliberately minimal but real resource scheduler, enough to serve as the core of task orchestration.
 
@@ -731,11 +731,11 @@ java -jar hercules-twelve-labors.jar
 The primary way to use Hercules is through direct interaction with the Manager module:
 
 > **Architecture Note**: Hercules-Executor uses HTTP-only communication with the Manager. The executor:
-> - Fetches tasks via `GET /taskDispatch/tryFetchTasksWithByteArray` (binary payload, encrypted when a key is configured; plaintext `tryFetchTasks` is `qa`-profile only)
+> - Fetches tasks via `GET /taskDispatch/tryFetchTasksWithByteArray` (binary payload, encrypted with `hercules.security.http-encrypt-key`; plaintext `tryFetchTasks` is `qa`-profile only)
 > - Locks tasks via `PUT /taskDispatch/tryLockOneTask`
 > - Reports completion via `PUT /taskDispatch/finishOneTask`
 > - Reports failures via `PUT /taskDispatch/failOneTask`
-> - Signs every mutation with a per-executor HMAC (`passSign`)
+> - Signs every operation (including fetch) with a per-executor HMAC (`passSign`)
 > - No direct database access - all operations through RESTful APIs
 
 1. **Register Execution Plugins**
