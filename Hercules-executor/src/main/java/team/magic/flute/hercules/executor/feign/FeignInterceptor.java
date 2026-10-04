@@ -61,7 +61,7 @@ public class FeignInterceptor implements RequestInterceptor {
             if (Objects.nonNull(extraHeader) && !extraHeader.isEmpty()) {
                 gateHeaders.putAll(extraHeader);
             }
-            template.headers(gateHeaders);
+            gateHeaders.forEach(template::header);
         } catch (URISyntaxException e) {
             throw new ApiException(e.getMessage());
         }
