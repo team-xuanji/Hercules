@@ -15,7 +15,7 @@ Hercules Executor 采用**无状态、纯 HTTP 架构**进行所有任务管理�
 - **基于插件的执行**：动态插件加载与隔离执行环境
 
 ### HTTP API 操作：
-- `tryFetchTasks`：从管理器轮询可用任务
+- `tryFetchTasksWithByteArray`：从管理器轮询可用任务（二进制载荷，配置密钥后加密；明文 `tryFetchTasks` 仅 QA 环境可用）
 - `tryLockOneTask`：锁定任务进行独占执行
 - `finishOneTask`：报告任务成功完成
 - `asyncRerunOneTask`：请求任务重试协调
@@ -85,7 +85,7 @@ Hercules Executor 通过 `ExecutorProcessHandle` 提供强大的任务执行能�
 ## 架构组件
 
 ### 执行流程
-1. **任务轮询**：TaskConsumer 通过 HTTP API (`tryFetchTasks`) 定期轮询可用任务
+1. **任务轮询**：TaskConsumer 通过 HTTP API (`tryFetchTasksWithByteArray`，配置密钥后加密的二进制载荷) 定期轮询可用任务
 2. **任务锁定**：通过 HTTP API (`tryLockOneTask`) 锁定任务进行执行
 3. **插件加载**：动态下载和加载所需插件
 4. **任务执行**：在具有适当资源管理的隔离线程池中执行任务

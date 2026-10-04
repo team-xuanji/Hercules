@@ -15,7 +15,7 @@ The Hercules Executor follows a **stateless, HTTP-only architecture** for all ta
 - **Plugin-Based Execution**: Dynamic plugin loading with isolated execution environments
 
 ### HTTP API Operations:
-- `tryFetchTasks`: Poll for available tasks from the manager
+- `tryFetchTasksWithByteArray`: Poll for available tasks (binary payload, encrypted when a key is configured; plaintext `tryFetchTasks` is QA-only)
 - `tryLockOneTask`: Lock tasks for exclusive execution
 - `finishOneTask`: Report successful task completion
 - `asyncRerunOneTask`: Request task retry coordination
@@ -85,7 +85,7 @@ Seamless integration with Hercules Manager and external systems:
 ## Architecture Components
 
 ### Execution Flow
-1. **Task Polling**: TaskConsumer periodically polls for available tasks via HTTP API (`tryFetchTasks`)
+1. **Task Polling**: TaskConsumer periodically polls for available tasks via HTTP API (`tryFetchTasksWithByteArray`, binary payload encrypted when a key is configured)
 2. **Task Locking**: Tasks are locked for execution via HTTP API (`tryLockOneTask`)
 3. **Plugin Loading**: Required plugins are downloaded and loaded dynamically
 4. **Task Execution**: Tasks are executed in isolated thread pools with proper resource management

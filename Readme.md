@@ -1,5 +1,8 @@
 # Hercules - Distributed Task Orchestration & Data Processing Platform
 
+> **A poor man's distributed scheduler.** No MQ. No ZooKeeper. No etcd. No Redis. No actor framework.
+> Just a MySQL, an HTTP client, and a deep reluctance to run more middleware.
+
 ![heracles_logo.png](heracles_logo.png)
 
 [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE)
@@ -17,7 +20,15 @@
 
 ## Overview
 
-Hercules is a powerful, distributed task orchestration and execution engine designed for maximum versatility and scalability. Named after the Greek god of strength, Hercules demonstrates immense power in integrating and executing a wide variety of business tasks through a flexible, loosely-coupled architecture.
+Hercules takes its name from the hero of twelve impossible labors — not because this engine is big, but because a loosely-coupled plugin architecture lets one small system play many roles. Its architecture philosophy, however, is the exact opposite of its name: **if it can be avoided, it is not added.**
+
+The whole system rests on one humble premise — you already have a MySQL. From that premise, we built:
+
+- **Locks out of the database**: a conditional UPDATE *is* a distributed lock; MySQL's atomicity *is* the mutual exclusion.
+- **Elections out of heartbeats**: oldest living instance wins, UUIDv7 ordering is good enough.
+- **Identity out of self-minting + HMAC**: each executor generates its own identity at boot and registers it via encrypted heartbeat — TOFU under a DB-trusted threat model; every mutation is then HMAC-signed per instance.
+- **Compute out of embedded DuckDB**: executors carry their own OLAP engine — no external warehouse required, and each executor can enable or disable it per deployment.
+- **Scheduling out of slots**: executors advertise their capacity over heartbeat and only pull work while they have a free slot — a deliberately minimal but real resource scheduler, enough to serve as the core of task orchestration.
 
 ### Key Features
 
@@ -49,6 +60,30 @@ Hercules is a powerful, distributed task orchestration and execution engine desi
 - **Compliance Reporting**: Automated compliance and audit report generation
 
 > **Note**: The current Twelve-Labors implementation focuses on data export as an example. The module is designed to be extended for any business-specific use case that benefits from simplified interfaces over the core Manager APIs.
+
+## Design Philosophy: Poverty-Driven Architecture
+
+With a healthy budget, this could have grown into the standard "Kafka + ZooKeeper + K8s Operator + Prometheus" shape.
+But the reality is: operating a distributed middleware stack often costs more than the problem it solves.
+
+So every "standard approach" got replaced with "whatever was already on hand":
+
+| Standard approach | Budget edition | What it costs |
+|---|---|---|
+| ZooKeeper / etcd election | MySQL heartbeat + UUIDv7 seniority (master only cleans up; work is bucket-sharded across all live instances) | No strong consensus — fine for idempotent GC, don't run trading on it |
+| MQ task dispatch | HTTP polling + conditional-update claim | Polling latency, in exchange for zero middleware |
+| K8s Operator | HTTP executors with heartbeats | You own the process lifecycle |
+| Prometheus / Grafana | Structured log prefixes (`[PLUGIN_DRIFTED]`, `[INVALID_EXECUTOR_OP]`) | No dashboards; diagnose with grep |
+| OAuth / mTLS | Self-minted identity + per-instance HMAC signing | Trust boundary = DB read access (identities are stored there) |
+
+### The price of poverty
+
+A budget edition is not free. We don't hide it:
+
+- **No strong election** — good enough for cleanup jobs, no consensus guarantees.
+- **Logs are the only observability** — no metrics dashboard, but every critical event carries a stable prefix you can alert on.
+- **Everything rides on one MySQL** — if it's down, the platform is down. HA replication is your call.
+- **Thin unit test coverage** — integration-tested against real dependencies; unit tests for the core dispatch paths are being backfilled.
 
 ## Architecture Overview
 
@@ -116,7 +151,7 @@ Hercules follows a modular, microservices architecture designed for scalability 
 - **Key Features**:
   - **Stateless Architecture**: No direct database access, pure HTTP communication
   - **Feign Client Integration**: RESTful task management via `HerculesManagerApi`
-  - **HTTP Task Lifecycle**: `tryFetchTasks` → `tryLockOneTask` → `finishOneTask`/`failOneTask`
+  - **HTTP Task Lifecycle**: `tryFetchTasksWithByteArray` → `tryLockOneTask` → `finishOneTask`/`failOneTask`
   - **Multi-threaded Execution**: Configurable task execution slots with thread pool
   - **Dynamic Plugin Loading**: White list security and remote plugin downloading
   - **Region-based Organization**: Better resource management and geographical distribution
@@ -696,10 +731,11 @@ java -jar hercules-twelve-labors.jar
 The primary way to use Hercules is through direct interaction with the Manager module:
 
 > **Architecture Note**: Hercules-Executor uses HTTP-only communication with the Manager. The executor:
-> - Fetches tasks via `GET /taskDispatch/tryFetchTasks`
+> - Fetches tasks via `GET /taskDispatch/tryFetchTasksWithByteArray` (binary payload, encrypted when a key is configured; plaintext `tryFetchTasks` is `qa`-profile only)
 > - Locks tasks via `PUT /taskDispatch/tryLockOneTask`
 > - Reports completion via `PUT /taskDispatch/finishOneTask`
 > - Reports failures via `PUT /taskDispatch/failOneTask`
+> - Signs every mutation with a per-executor HMAC (`passSign`)
 > - No direct database access - all operations through RESTful APIs
 
 1. **Register Execution Plugins**
