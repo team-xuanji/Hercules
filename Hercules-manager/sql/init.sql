@@ -173,6 +173,7 @@ CREATE TABLE HERCULES_RECOVER_TASKS_DEAD (
 
 CREATE TABLE HERCULES_EXECUTOR_INFO (
                                         EXECUTOR_ID VARCHAR(128) NOT NULL COMMENT 'Executor ID, Primary Key',
+                                        IDENTITY_ID VARCHAR(128) COMMENT 'Executor Identity ID',
                                         EXECUTOR_REGION VARCHAR(128) COMMENT 'Executor Region',
                                         EXECUTOR_REGION_DESC VARCHAR(500) COMMENT 'Executor Region Desc',
                                         EXECUTOR_MAX_SLOT INT COMMENT 'Maximum number of executor resource slots',

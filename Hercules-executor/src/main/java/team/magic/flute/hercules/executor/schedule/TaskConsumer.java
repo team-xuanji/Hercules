@@ -11,8 +11,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import team.magic.flute.hercules.common.executor.ExecutorCurrentLoadPluginInfo;
 import team.magic.flute.hercules.common.executor.HerculesExecutorHeartbeatInfo;
+import team.magic.flute.hercules.common.global.ExecutorTaskOps;
 import team.magic.flute.hercules.common.http.BaseResponse;
 import team.magic.flute.hercules.common.http.HerculesRunnableTaskInfo;
+import team.magic.flute.hercules.common.util.ExecutorInfoUtils;
 import team.magic.flute.hercules.common.util.JacksonUtils;
 import team.magic.flute.hercules.executor.api.HerculesManagerApi;
 import team.magic.flute.hercules.executor.config.RunnerEnv;
@@ -73,6 +75,7 @@ public class TaskConsumer {
             try{
                 HerculesExecutorHeartbeatInfo requestVO = new HerculesExecutorHeartbeatInfo()
                         .setExecutorId(runnerEnv.getRunnerInstanceId())
+                        .setExecutorIdentityId(runnerEnv.getRunnerIdentityId())
                         .setExecutorRegion(runnerEnv.getExecutorRegion())
                         .setExecutorRegionDesc(runnerEnv.getExecutorRegionDesc())
                         .setExecutorMaxSlot(runnerEnv.getTotalSlot())
@@ -168,7 +171,12 @@ public class TaskConsumer {
                     continue;
                 }
                 if(executorProcessHandle.aliveAbleSlot()>0){
-                    BaseResponse<Boolean> result = managerApi.tryLockOneTask(runnerEnv.getExecutorRegion(),runnerEnv.getRunnerInstanceId(),taskInfo.getId());
+                    BaseResponse<Boolean> result = managerApi.tryLockOneTask(
+                            runnerEnv.getExecutorRegion(),
+                            runnerEnv.getRunnerInstanceId(),
+                            taskInfo.getId(),
+                            ExecutorInfoUtils.getExecutorSign(runnerEnv.getRunnerIdentityId(),taskInfo.getId(), ExecutorTaskOps.LOCK)
+                    );
                     if(result.getCode()!=200){
                         log.error("Unable to lock the task, skipping execution. Response body[{}]", JacksonUtils.writeValueAsString(result));
                         continue;

@@ -26,6 +26,7 @@ public class RunnerEnv implements EnvironmentAware {
     private int duckdbThreadCount;
     private String executorRegion;
     private String runnerInstanceId;
+    private String runnerIdentityId;
     private boolean enableDuckdb;
     private String executorRegionDesc;
     private List<String> pluginWhiteList;
@@ -35,6 +36,9 @@ public class RunnerEnv implements EnvironmentAware {
 
     @Override
     public void setEnvironment(Environment environment) {
+        this.runnerInstanceId = "EXECUTOR_INSTANCE_"+ executorRegion +"_"+ GUID.v7();
+        this.runnerIdentityId = "EXECUTOR_IDENTITY_"+ executorRegion +"_"+ GUID.v7();
+
         String whiteListStr = environment.getProperty(Constant.PLUGIN_WHITE_LIST,String.class,"");
         if(StringUtils.isBlank(whiteListStr)){
             this.pluginWhiteList = new ArrayList<>();
@@ -48,7 +52,6 @@ public class RunnerEnv implements EnvironmentAware {
         this.executorRegion = environment.getProperty(Constant.EXECUTOR_REGION,"TEST");
         this.duckdbThreadCount = environment.getProperty(Constant.THREAD_COUNT,int.class,Constant.DEFAULT_DUCKDB_MEM_GB_SIZE);
         this.enableDuckdb = environment.getProperty(Constant.ENABLE_DUCKDB,boolean.class,Constant.DEFAULT_ENABLE_DUCKDB);
-        this.runnerInstanceId = "EXECUTOR_INSTANCE_"+ executorRegion +"_"+ GUID.v7();
         this.totalSlot = environment.getProperty(Constant.EXECUTOR_SLOT_SIZE,int.class,Constant.DEFAULT_EXECUTOR_SLOT_SIZE);
         this.duckdbPath = environment.getProperty(Constant.DUCKDB_STORAGE_PATH,Constant.DEFAULT_DUCKDB_STORAGE_PATH);
         this.duckdbSpillPath = environment.getProperty(Constant.DUCKDB_SPILL_PATH,Constant.DEFAULT_DUCKDB_SPILL_PATH);

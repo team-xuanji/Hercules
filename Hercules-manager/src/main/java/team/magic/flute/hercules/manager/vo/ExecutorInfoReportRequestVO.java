@@ -34,6 +34,7 @@ public class ExecutorInfoReportRequestVO {
         data = BinaryCompressUtils.deCompress(data,compressType,originalLength);
         HerculesExecutorHeartbeatInfo heartbeatInfo = ForyUtils.deserialize(data, HerculesExecutorHeartbeatInfo.class);
         return new HerculesExecutorInfo()
+                .setIdentityId(heartbeatInfo.getExecutorIdentityId())
                 .setExecutorId(heartbeatInfo.getExecutorId())
                 .setExecutorRegion(heartbeatInfo.getExecutorRegion())
                 .setExecutorRegionDesc(heartbeatInfo.getExecutorRegionDesc())

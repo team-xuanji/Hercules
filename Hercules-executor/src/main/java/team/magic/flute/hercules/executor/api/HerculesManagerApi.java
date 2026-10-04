@@ -105,12 +105,13 @@ public interface HerculesManagerApi {
             @Param("fetchLimit")Integer fetchLimit
     );
 
-    @RequestLine("PUT /taskDispatch/tryLockOneTask?executorRegion={executorRegion}&executorId={executorId}&taskId={taskId}")
+    @RequestLine("PUT /taskDispatch/tryLockOneTask?executorRegion={executorRegion}&executorId={executorId}&taskId={taskId}&passSign={passSign}")
     @Headers("Content-Type: application/json;charset=UTF-8")
     BaseResponse<Boolean> tryLockOneTask(
             @Param("executorRegion")String executorRegion,
             @Param("executorId")String executorId,
-            @Param("taskId")String taskId
+            @Param("taskId")String taskId,
+            @Param("passSign") String passSign
     );
 
     @RequestLine("PUT /taskDispatch/finishOneTask")
@@ -119,18 +120,20 @@ public interface HerculesManagerApi {
             FinishOneTaskRequestVO requestVO
     );
 
-    @RequestLine("PUT /taskDispatch/abandonOneTask?taskId={taskId}&executorId={executorId}")
+    @RequestLine("PUT /taskDispatch/abandonOneTask?taskId={taskId}&executorId={executorId}&passSign={passSign}")
     @Headers("Content-Type: application/json;charset=UTF-8")
     BaseResponse<Boolean> abandonOneTask(
             @Param("taskId")String taskId,
-            @Param("executorId")String executorId
+            @Param("executorId")String executorId,
+            @Param("passSign") String passSign
     );
 
-    @RequestLine("PUT /taskDispatch/failOneTask?taskId={taskId}&executorId={executorId}")
+    @RequestLine("PUT /taskDispatch/failOneTask?taskId={taskId}&executorId={executorId}&passSign={passSign}")
     @Headers("Content-Type: application/json;charset=UTF-8")
     BaseResponse<Boolean> failOneTask(
             @Param("taskId")String taskId,
-            @Param("executorId")String executorId
+            @Param("executorId")String executorId,
+            @Param("passSign") String passSign
     );
 
 }

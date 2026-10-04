@@ -24,6 +24,8 @@ import java.time.LocalDateTime;
 public class HerculesExecutorInfo {
     @TableId(value = "EXECUTOR_ID")
     private String executorId;
+    @TableField(value = "IDENTITY_ID")
+    private String identityId;
     @TableField(value = "EXECUTOR_REGION")
     private String executorRegion;
     @TableField(value = "EXECUTOR_REGION_DESC")

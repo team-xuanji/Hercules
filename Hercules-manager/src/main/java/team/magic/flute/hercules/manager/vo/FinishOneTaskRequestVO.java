@@ -14,4 +14,6 @@ public class FinishOneTaskRequestVO {
     private String checkPointInfo;
     @NotBlank(message = "Executor ID must be specified.")
     private String executorId;
+    @NotBlank(message = "Executor ID must be specified.")
+    private String passSign;
 }

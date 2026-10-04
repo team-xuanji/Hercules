@@ -23,4 +23,6 @@ public class HerculesExecutorHeartbeatInfo {
     private ExecutorCurrentLoadPluginInfo executorLoadPluginInfo;
 
     private List<String> executorPluginHandleWhiteList;
+
+    private String executorIdentityId;
 }

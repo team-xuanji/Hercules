@@ -3,12 +3,14 @@ package team.magic.flute.hercules.manager.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import team.magic.flute.hercules.common.global.ExecutorTaskOps;
 import team.magic.flute.hercules.common.http.BaseResponse;
 import team.magic.flute.hercules.common.http.HerculesHttpCompressType;
 import team.magic.flute.hercules.common.http.HerculesRunnableTaskInfo;
@@ -16,6 +18,7 @@ import team.magic.flute.hercules.common.plugin.PluginResourceInfo;
 import team.magic.flute.hercules.common.status.TaskStatus;
 import team.magic.flute.hercules.common.util.*;
 import team.magic.flute.hercules.manager.config.RunnerEnv;
+import team.magic.flute.hercules.manager.dao.po.HerculesExecutorInfo;
 import team.magic.flute.hercules.manager.dao.po.HerculesTaskInfo;
 import team.magic.flute.hercules.manager.service.HerculesExecutorInfoService;
 import team.magic.flute.hercules.manager.service.HerculesExecutorTasksService;
@@ -26,7 +29,6 @@ import team.magic.flute.hercules.manager.vo.FinishOneTaskRequestVO;
 import javax.validation.Valid;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -128,14 +130,16 @@ public class TaskDispatchController {
 
     @PutMapping("/tryLockOneTask")
     public BaseResponse<Boolean> tryLockOneTask(@RequestParam("executorId") String executorId,
+                                                @RequestParam("passSign") String passSign,
                                                 @RequestParam("executorRegion") String executorRegion,
                                                 @RequestParam("taskId") String taskId){
+
+        if (verifyExecutorInfo(executorId,taskId,passSign,ExecutorTaskOps.LOCK,executorRegion)) {
+            return BaseResponse.fail("Invalid executor identity signature.");
+        }
         HerculesTaskInfo taskInfo = executorTasksService.getById(taskId);
         if(taskInfo==null){
             return BaseResponse.fail(StrFormat.format("Task does not exist! TaskId = [{}]", taskId));
-        }
-        if(executorInfoService.getById(executorId)==null){
-            return BaseResponse.fail(StrFormat.format("Unknown executor [{}], lock refused.", executorId));
         }
         String pluginGroup = taskInfo.getPluginGroup();
         String pluginHandle =taskInfo.getPluginHandle();
@@ -186,6 +190,9 @@ public class TaskDispatchController {
 
     @PutMapping("/finishOneTask")
     public BaseResponse<Boolean> finishOneTask(@Valid @RequestBody FinishOneTaskRequestVO requestVO){
+        if (verifyExecutorInfo(requestVO.getExecutorId(),requestVO.getTaskId(),requestVO.getPassSign(),ExecutorTaskOps.FINISH,null)) {
+            return BaseResponse.fail("Invalid executor identity signature.");
+        }
         LambdaUpdateWrapper<HerculesTaskInfo> updateWrapper = new LambdaUpdateWrapper<HerculesTaskInfo>()
                 .eq(HerculesTaskInfo::getId,requestVO.getTaskId())
                 .eq(HerculesTaskInfo::getOwnerId,requestVO.getExecutorId())
@@ -197,9 +204,10 @@ public class TaskDispatchController {
 
     @PutMapping("/abandonOneTask")
     public BaseResponse<Boolean> abandonOneTask(@RequestParam("executorId") String executorId,
-                                                @RequestParam("taskId") String taskId){
-        if(executorInfoService.getById(executorId)==null){
-            return BaseResponse.fail(StrFormat.format("The executor does not exist or has not reported any information. ExecutorId = [{}]",executorId));
+                                                @RequestParam("taskId") String taskId,
+                                                @RequestParam("passSign") String passSign){
+        if (verifyExecutorInfo(executorId,taskId,passSign,ExecutorTaskOps.ABANDON,null)) {
+            return BaseResponse.fail("Invalid executor identity signature.");
         }
         LambdaUpdateWrapper<HerculesTaskInfo> updateWrapper = new LambdaUpdateWrapper<HerculesTaskInfo>()
                 .eq(HerculesTaskInfo::getId,taskId)
@@ -212,9 +220,10 @@ public class TaskDispatchController {
 
     @PutMapping("/failOneTask")
     public BaseResponse<Boolean> failOneTask(@RequestParam("executorId") String executorId,
-                                             @RequestParam("taskId") String taskId){
-        if(executorInfoService.getById(executorId)==null){
-            return BaseResponse.fail(StrFormat.format("The executor does not exist or has not reported any information. ExecutorId = [{}]",executorId));
+                                             @RequestParam("taskId") String taskId,
+                                             @RequestParam("passSign") String passSign){
+        if (verifyExecutorInfo(executorId,taskId,passSign,ExecutorTaskOps.FAIL,null)) {
+            return BaseResponse.fail("Invalid executor identity signature.");
         }
         HerculesTaskInfo taskInfo = executorTasksService.getById(taskId);
         if(taskInfo==null){
@@ -227,6 +236,21 @@ public class TaskDispatchController {
                 .set(HerculesTaskInfo::getCheckPointInfo,null)
                 .set(HerculesTaskInfo::getStatus,TaskStatus.FAILED.name());
         return BaseResponse.success(executorTasksService.update(updateWrapper));
+    }
+
+    private boolean verifyExecutorInfo(String executorId,
+                                       String taskId,
+                                       String passSign,
+                                       ExecutorTaskOps ops,
+                                       String executorRegion){
+        HerculesExecutorInfo executor = executorInfoService.getById(executorId);
+        boolean executorNotExists = executor == null;
+        boolean executorRegionMissMatch = executor!=null && StringUtils.isNotBlank(executorRegion) && !Objects.equals(executor.getExecutorRegion(),executorRegion);
+        boolean passSignMissMatch = executor!=null && !ExecutorInfoUtils.verifyExecutorSign(executor.getIdentityId(),
+                taskId,
+                ops,
+                passSign);
+        return executorNotExists || executorRegionMissMatch || passSignMissMatch;
     }
 
 }

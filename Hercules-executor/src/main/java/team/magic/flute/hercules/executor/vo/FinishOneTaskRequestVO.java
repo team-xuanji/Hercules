@@ -10,4 +10,5 @@ public class FinishOneTaskRequestVO {
     private String taskId;
     private String checkPointInfo;
     private String executorId;
+    private String passSign;
 }

@@ -9,6 +9,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import team.magic.flute.hercules.common.classloader.LocalJarURLStreamHandlerFactory;
+import team.magic.flute.hercules.common.global.ExecutorTaskOps;
 import team.magic.flute.hercules.common.http.PluginDesc;
 import team.magic.flute.hercules.common.http.BaseResponse;
 import team.magic.flute.hercules.common.http.EnumResponseType;
@@ -16,6 +17,7 @@ import team.magic.flute.hercules.common.http.HerculesRunnableTaskInfo;
 import team.magic.flute.hercules.common.plugin.PluginResourceInfo;
 import team.magic.flute.hercules.common.plugin.TaskPlugin;
 import team.magic.flute.hercules.common.status.TaskExecutionContext;
+import team.magic.flute.hercules.common.util.ExecutorInfoUtils;
 import team.magic.flute.hercules.common.util.StrFormat;
 import team.magic.flute.hercules.executor.api.HerculesManagerApi;
 import team.magic.flute.hercules.executor.config.RunnerEnv;
@@ -357,14 +359,21 @@ public class ExecutorProcessHandleImpl implements ExecutorProcessHandle, Closeab
     }
 
     private void abandon(HerculesRunnableTaskInfo taskInfo) {
-        BaseResponse<Boolean> result = managerApi.abandonOneTask(taskInfo.getId(),runnerEnv.getRunnerInstanceId());
+        BaseResponse<Boolean> result = managerApi.abandonOneTask(
+                taskInfo.getId(),
+                runnerEnv.getRunnerInstanceId(),
+                ExecutorInfoUtils.getExecutorSign(runnerEnv.getRunnerIdentityId(),taskInfo.getId(), ExecutorTaskOps.ABANDON)
+        );
         if(result.getCode()!=200 || !Boolean.TRUE.equals(result.getData())){
             throw new RuntimeException(result.getMsg());
         }
     }
 
     private void failed(HerculesRunnableTaskInfo taskInfo) {
-        BaseResponse<Boolean> result = managerApi.failOneTask(taskInfo.getId(),runnerEnv.getRunnerInstanceId());
+        BaseResponse<Boolean> result = managerApi.failOneTask(
+                taskInfo.getId(),
+                runnerEnv.getRunnerInstanceId(),
+                ExecutorInfoUtils.getExecutorSign(runnerEnv.getRunnerIdentityId(),taskInfo.getId(), ExecutorTaskOps.FAIL));
         if(result.getCode()!=200 || !Boolean.TRUE.equals(result.getData())){
             throw new RuntimeException(result.getMsg());
         }
@@ -375,6 +384,7 @@ public class ExecutorProcessHandleImpl implements ExecutorProcessHandle, Closeab
                 .setTaskId(taskExecutionContext.getId())
                 .setCheckPointInfo(taskExecutionContext.getCheckPointResult())
                 .setExecutorId(runnerEnv.getRunnerInstanceId())
+                .setPassSign(ExecutorInfoUtils.getExecutorSign(runnerEnv.getRunnerIdentityId(),taskExecutionContext.getId(), ExecutorTaskOps.FINISH))
         );
         if(result.getCode()!=200 || !Boolean.TRUE.equals(result.getData())){
             throw new RuntimeException(result.getMsg());
