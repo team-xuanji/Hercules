@@ -238,6 +238,13 @@ public class TaskDispatchController {
         return BaseResponse.success(executorTasksService.update(updateWrapper));
     }
 
+    /**
+     * Region check semantics: an executor's region is fixed at deployment and
+     * immutable for the instance's lifetime — a restart mints a new executorId
+     * and identityId and re-registers. This check binds operations to the region
+     * the instance was deployed as. Who may deploy an executor as region X is
+     * governed by config management / infra, same division as the admin plane.
+     */
     private boolean isInvalidExecutorOp(String executorId,
                                         String taskId,
                                         String passSign,
