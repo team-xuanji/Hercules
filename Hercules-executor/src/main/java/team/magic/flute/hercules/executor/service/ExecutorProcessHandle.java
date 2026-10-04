@@ -1,6 +1,6 @@
 package team.magic.flute.hercules.executor.service;
 
-import team.magic.flute.hercules.common.executor.PluginDesc;
+import team.magic.flute.hercules.common.http.PluginDesc;
 import team.magic.flute.hercules.common.http.HerculesRunnableTaskInfo;
 
 import java.io.IOException;

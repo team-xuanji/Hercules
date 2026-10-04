@@ -9,7 +9,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import team.magic.flute.hercules.common.classloader.LocalJarURLStreamHandlerFactory;
-import team.magic.flute.hercules.common.executor.PluginDesc;
+import team.magic.flute.hercules.common.http.PluginDesc;
 import team.magic.flute.hercules.common.http.BaseResponse;
 import team.magic.flute.hercules.common.http.EnumResponseType;
 import team.magic.flute.hercules.common.http.HerculesRunnableTaskInfo;

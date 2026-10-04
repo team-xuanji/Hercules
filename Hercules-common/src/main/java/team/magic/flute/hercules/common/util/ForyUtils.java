@@ -7,7 +7,7 @@ import org.apache.fory.ThreadSafeFory;
 import org.apache.fory.config.Language;
 import team.magic.flute.hercules.common.executor.ExecutorCurrentLoadPluginInfo;
 import team.magic.flute.hercules.common.executor.HerculesExecutorHeartbeatInfo;
-import team.magic.flute.hercules.common.executor.PluginDesc;
+import team.magic.flute.hercules.common.http.PluginDesc;
 import team.magic.flute.hercules.common.http.HerculesRunnableTaskInfo;
 import team.magic.flute.hercules.common.status.TaskType;
 

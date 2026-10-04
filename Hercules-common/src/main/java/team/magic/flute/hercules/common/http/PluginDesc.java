@@ -1,4 +1,4 @@
-package team.magic.flute.hercules.common.executor;
+package team.magic.flute.hercules.common.http;
 
 import lombok.Data;
 import lombok.experimental.Accessors;
