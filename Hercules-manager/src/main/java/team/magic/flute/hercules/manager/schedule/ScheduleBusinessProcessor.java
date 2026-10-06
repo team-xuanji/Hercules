@@ -65,6 +65,7 @@ public class ScheduleBusinessProcessor {
     /**
      * Clean up tasks that have been running for more than 10 minutes and whose ownerId does not correspond to a running executor.
      */
+    @Transactional
     public void changeDeadTaskToCancelled() {
         List<HerculesTaskInfo> deadTasks = tasksService.list(new LambdaQueryWrapper<HerculesTaskInfo>()
                 .eq(HerculesTaskInfo::getStatus, TaskStatus.RUNNING.name())
@@ -87,6 +88,11 @@ public class ScheduleBusinessProcessor {
         if(!deadTasks.isEmpty()){
             for (HerculesTaskInfo deadTask : deadTasks) {
                 if(deadTask.getAsyncRecoverContext()!=null){
+                    /*
+                    * The asyncRetryOneTask method registers information with the fault-tolerant table;
+                    * here, a transaction is needed to ensure as far as possible that duplicate records
+                    * are not inserted.
+                    * */
                     BaseResponse<HerculesRecoverTaskInfoVO> result =  taskManagerService.asyncRetryOneTask(new AsyncRetryOneTaskRequestVO()
                             .setTaskId(deadTask.getId())
                             .setErrorMessage("DEAD_TASK"));
