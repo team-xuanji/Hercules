@@ -2,6 +2,10 @@ package team.magic.flute.hercules.common.util;
 
 import team.magic.flute.hercules.common.global.ExecutorTaskOps;
 
+import java.util.Collection;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
 public class ExecutorInfoUtils {
 
     /**
@@ -27,4 +31,16 @@ public class ExecutorInfoUtils {
     private static String getMsg(String subject, ExecutorTaskOps taskOp){
         return subject+":"+taskOp;
     }
+
+    public static String buildSignSubject(Collection<String> ids){
+        if (ids == null) {
+            throw new IllegalArgumentException("[CAN NOT BUILD SIGN]:ids is null");
+        }
+        String joined = ids.stream().filter(Objects::nonNull).sorted().collect(Collectors.joining(","));
+        if (joined.isEmpty()) {
+            throw new IllegalArgumentException("[CAN NOT BUILD SIGN]:ids is empty");
+        }
+        return joined;
+    }
+
 }

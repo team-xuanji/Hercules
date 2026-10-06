@@ -2,6 +2,7 @@ package team.magic.flute.hercules.manager.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,10 +12,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import team.magic.flute.hercules.common.global.ExecutorTaskOps;
-import team.magic.flute.hercules.common.http.BaseResponse;
-import team.magic.flute.hercules.common.http.HerculesHttpCompressType;
-import team.magic.flute.hercules.common.http.HerculesRunnableTaskInfo;
-import team.magic.flute.hercules.common.plugin.PluginResourceInfo;
+import team.magic.flute.hercules.common.http.*;
 import team.magic.flute.hercules.common.status.TaskStatus;
 import team.magic.flute.hercules.common.util.*;
 import team.magic.flute.hercules.manager.config.RunnerEnv;
@@ -24,13 +22,14 @@ import team.magic.flute.hercules.manager.service.HerculesExecutorInfoService;
 import team.magic.flute.hercules.manager.service.HerculesExecutorTasksService;
 import team.magic.flute.hercules.manager.service.HerculesPluginManagerService;
 import team.magic.flute.hercules.manager.util.DTOConvertUtils;
+import team.magic.flute.hercules.common.http.BatchLockRequest;
+import team.magic.flute.hercules.common.http.BatchTaskLockProcessResult;
 import team.magic.flute.hercules.manager.vo.FinishOneTaskRequestVO;
+import team.magic.flute.hercules.manager.vo.PluginRegisterImplVO;
 
 import javax.validation.Valid;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static team.magic.flute.hercules.common.global.Constant.*;
@@ -135,60 +134,86 @@ public class TaskDispatchController {
                                                 @RequestParam("passSign") String passSign,
                                                 @RequestParam("executorRegion") String executorRegion,
                                                 @RequestParam("taskId") String taskId){
+        BaseResponse<BatchTaskLockProcessResult> processResult = tryLockBatchTask(new BatchLockRequest()
+                .setExecutorId(executorId)
+                .setExecutorRegion(executorRegion)
+                .setPassSign(passSign)
+                .setTaskIds(Lists.newArrayList(taskId)));
+        if(processResult.getCode()== EnumResponseType.SUCCESS.getCode() && processResult.getData()!=null){
+            BatchTaskLockProcessResult data = processResult.getData();
+            TaskInfoLockResult lockResult = data.getLockResults().get(taskId);
+            if (lockResult == null)
+                // This should not happen in theory, because there is no corresponding logic for the tryLockBatchTask method.
+                return BaseResponse.fail("Unknown Error!");
+            switch (lockResult){
+                case NOT_EXIST:
+                    return BaseResponse.fail(StrFormat.format("Task does not exist! TaskId = [{}]", taskId));
+                case PLUGIN_DRIFT:
+                    return BaseResponse.fail(StrFormat.format(
+                            "PLUGIN_DRIFTED: task [{}] cancelled, plugin handle not registered under its group.", taskId));
+                case NOT_CLAIMED:
+                    return BaseResponse.success(false);
+                case REGION_MISMATCH:
+                    return BaseResponse.fail(StrFormat.format("Region mismatch, task [{}] lock refused.", taskId));
+                case SUCCESS:
+                    return BaseResponse.success(true);
+                default:
+                    return BaseResponse.fail(StrFormat.format("Unexpected lock result [{}] for task [{}].", lockResult, taskId));
+            }
+        }else{
+            return BaseResponse.fail(processResult.getMsg());
+        }
+    }
 
-        if (isInvalidExecutorOp(executorId,taskId,passSign,ExecutorTaskOps.LOCK,executorRegion)) {
+    @PutMapping("/tryLockBatchTask")
+    public BaseResponse<BatchTaskLockProcessResult> tryLockBatchTask(@Valid @RequestBody BatchLockRequest batchLockRequest){
+        String executorId = batchLockRequest.getExecutorId();
+        String passSign = batchLockRequest.getPassSign();
+        String executorRegion = batchLockRequest.getExecutorRegion();
+        String subject = ExecutorInfoUtils.buildSignSubject(batchLockRequest.getTaskIds());
+        if (isInvalidExecutorOp(executorId,subject,passSign,ExecutorTaskOps.LOCK,executorRegion)) {
             return BaseResponse.fail("Invalid executor identity signature.");
         }
-        HerculesTaskInfo taskInfo = executorTasksService.getById(taskId);
-        if(taskInfo==null){
-            return BaseResponse.fail(StrFormat.format("Task does not exist! TaskId = [{}]", taskId));
+        boolean allSuccess = false;
+        Set<String> taskIds = Optional.ofNullable(batchLockRequest.getTaskIds())
+                .orElse(new ArrayList<>())
+                .stream().filter(Objects::nonNull).collect(Collectors.toSet());
+        if(taskIds.isEmpty()){
+            log.info("taskIds is empty.");
+            return BaseResponse.success(new BatchTaskLockProcessResult()
+                    .setAllSuccess(allSuccess));
         }
-        String pluginGroup = taskInfo.getPluginGroup();
-        String pluginHandle =taskInfo.getPluginHandle();
-        PluginResourceInfo pluginResourceInfo = null;
-        try {
-            pluginResourceInfo = pluginManagerService.searchPlugin(pluginHandle, pluginGroup);
-        } catch (Exception e) {
-            log.error("Plugin registry lookup failed at lock attempt, task [{}] lock refused without cancellation.", taskId, e);
-            return BaseResponse.fail(StrFormat.format("Registry temporarily unverifiable, task [{}] lock refused.", taskId));
+        List<HerculesTaskInfo> taskInfo = executorTasksService.list(new LambdaQueryWrapper<HerculesTaskInfo>()
+                .in(HerculesTaskInfo::getId, taskIds));
+        Map<String,TaskInfoLockResult> missMatchTasks = findMissMatchTasks(taskIds,taskInfo,executorRegion);
+        Map<String, TaskInfoLockResult> tryLockResults = new HashMap<>(missMatchTasks);
+        List<HerculesTaskInfo> inRegionTaskInfo = taskInfo.stream()
+                .filter(x->!missMatchTasks.containsKey(x.getId()))
+                .collect(Collectors.toList());
+        if(inRegionTaskInfo.isEmpty()){
+            return BaseResponse.success(new BatchTaskLockProcessResult()
+                    .setAllSuccess(allSuccess)
+                    .setLockResults(tryLockResults));
         }
-        if(!Objects.equals(taskInfo.getExecutorRegion(),executorRegion)){
-            return BaseResponse.fail(StrFormat.format("Region mismatch: task [{}] belongs to [{}], not [{}].", taskId, taskInfo.getExecutorRegion(), executorRegion));
+        Set<String> pluginDriftedTasks = cancelIfDriftedTask(inRegionTaskInfo);
+        pluginDriftedTasks.forEach(id -> tryLockResults.put(id, TaskInfoLockResult.PLUGIN_DRIFT));
+        Set<String> correctTaskIds = inRegionTaskInfo
+                .stream()
+                .map(HerculesTaskInfo::getId)
+                .filter(id ->!pluginDriftedTasks.contains(id))
+                .collect(Collectors.toSet());
+        if(!correctTaskIds.isEmpty()){
+            Map<String,TaskInfoLockResult> lockResult = lockBatchTask(correctTaskIds,executorRegion,executorId);
+            tryLockResults.putAll(lockResult);
+            if(tryLockResults.values().stream().allMatch(r -> r == TaskInfoLockResult.SUCCESS)){
+                allSuccess = true;
+            }
         }
-        /*
-        * Considering that users may re-register plugins and modify the mapping between
-        * pluginGroup and PluginHandle, we should reject tasks that use an incorrect mapping.
-        * As for tasks already sent to the executor, because the executor retains old class loaders,
-        * and given that plugin registration is a low-frequency operation, the old historical tasks
-        * currently executing in the executor can theoretically run to completion. Of course,
-        * the executor currently retains at most 3 historical versions of old class loaders.
-        * If plugins are registered frequently, the executor will rotate out old class loaders,
-        * causing the executing task to fail. After the task is handled by fault tolerance,
-        * it should theoretically request the tryLockOneTask method again;
-        * at that point we can handle it correctly.
-        * */
-        if(pluginResourceInfo==null || pluginResourceInfo.getResources()==null || pluginResourceInfo.getResources().isEmpty()){
-            String info = StrFormat.format("PLUGIN_DRIFTED: handle [{}] not registered under group [{}] at lock attempt; task cancelled.",pluginHandle,pluginGroup);
-            LambdaUpdateWrapper<HerculesTaskInfo> failedStatUpdateWrapper = new LambdaUpdateWrapper<HerculesTaskInfo>()
-                    .eq(HerculesTaskInfo::getId,taskId)
-                    .eq(HerculesTaskInfo::getStatus, TaskStatus.INIT.name())
-                    .eq(HerculesTaskInfo::isEnable,true)
-                    .set(HerculesTaskInfo::getStatus, TaskStatus.CANCELLED.name())
-                    .set(HerculesTaskInfo::getOwnerId,null)
-                    .set(HerculesTaskInfo::getCheckPointInfo,info);
-            executorTasksService.update(failedStatUpdateWrapper);
-            return BaseResponse.fail(info);
-        }
-        LambdaUpdateWrapper<HerculesTaskInfo> updateWrapper = new LambdaUpdateWrapper<HerculesTaskInfo>()
-                .eq(HerculesTaskInfo::getId,taskId)
-                .eq(HerculesTaskInfo::getStatus, TaskStatus.INIT.name())
-                .eq(HerculesTaskInfo::getExecutorRegion,executorRegion)
-                .eq(HerculesTaskInfo::isEnable,true)
-                .isNull(HerculesTaskInfo::getOwnerId)
-                .set(HerculesTaskInfo::getOwnerId,executorId)
-                .set(HerculesTaskInfo::getStatus,TaskStatus.RUNNING.name());
-        return BaseResponse.success(executorTasksService.update(updateWrapper));
+        return BaseResponse.success(new BatchTaskLockProcessResult()
+                .setAllSuccess(allSuccess)
+                .setLockResults(tryLockResults));
     }
+
 
     @PutMapping("/finishOneTask")
     public BaseResponse<Boolean> finishOneTask(@Valid @RequestBody FinishOneTaskRequestVO requestVO){
@@ -275,6 +300,111 @@ public class TaskDispatchController {
             return true;
         }
         return false;
+    }
+
+    private Set<String> cancelIfDriftedTask(List<HerculesTaskInfo> inRegionTaskInfo){
+        Set<String> cancelSet = new HashSet<>();
+        Map<String, Map<String, Set<String>>> groupedTaskInfo = inRegionTaskInfo.stream()
+                .collect(Collectors.groupingBy(
+                        HerculesTaskInfo::getPluginGroup,
+                        Collectors.groupingBy(
+                                HerculesTaskInfo::getPluginHandle,
+                                Collectors.mapping(
+                                        HerculesTaskInfo::getId,
+                                        Collectors.toSet()))));
+        Set<String> pluginDriftedTasks = new HashSet<>();
+        groupedTaskInfo.forEach( (pluginGroup,innerGroup) -> {
+            List<PluginRegisterImplVO> implVOList = Optional.ofNullable(pluginManagerService.searchPluginImplInfo(pluginGroup))
+                    .orElse(new ArrayList<>());
+            Set<String> pluginHandlersInSingleGroup = implVOList.stream().map(PluginRegisterImplVO::getPluginHandle).collect(Collectors.toSet());
+            innerGroup.forEach( (pluginHandle,groupedTaskIds) -> {
+                if(!pluginHandlersInSingleGroup.contains(pluginHandle)){
+                    groupedTaskIds.forEach(taskId -> {
+                        pluginDriftedTasks.add(taskId);
+                        String info = StrFormat.format("PLUGIN_DRIFTED: handle [{}] not registered under group [{}] at lock attempt; task cancelled.",pluginHandle,pluginGroup);
+                        log.warn(info);
+                    });
+                }
+            });
+        });
+        if(!pluginDriftedTasks.isEmpty()){
+            /*
+             * Considering that users may re-register plugins and modify the mapping between
+             * pluginGroup and PluginHandle, we should reject tasks that use an incorrect mapping.
+             * As for tasks already sent to the executor, because the executor retains old class loaders,
+             * and given that plugin registration is a low-frequency operation, the old historical tasks
+             * currently executing in the executor can theoretically run to completion. Of course,
+             * the executor currently retains at most 3 historical versions of old class loaders.
+             * If plugins are registered frequently, the executor will rotate out old class loaders,
+             * causing the executing task to fail. After the task is handled by fault tolerance,
+             * it should theoretically request the tryLockOneTask method again;
+             * at that point we can handle it correctly.
+             * */
+            String info = "PLUGIN_DRIFTED: plugin group/handle mapping no longer registered at lock attempt; task cancelled.";
+            LambdaUpdateWrapper<HerculesTaskInfo> failedStatUpdateWrapper = new LambdaUpdateWrapper<HerculesTaskInfo>()
+                    .in(HerculesTaskInfo::getId,pluginDriftedTasks)
+                    .eq(HerculesTaskInfo::getStatus, TaskStatus.INIT.name())
+                    .eq(HerculesTaskInfo::isEnable,true)
+                    .set(HerculesTaskInfo::getStatus, TaskStatus.CANCELLED.name())
+                    .set(HerculesTaskInfo::getOwnerId,null)
+                    .set(HerculesTaskInfo::getCheckPointInfo,info);
+            executorTasksService.update(failedStatUpdateWrapper);
+            cancelSet.addAll(pluginDriftedTasks);
+        }
+        return cancelSet;
+    }
+
+    private Map<String,TaskInfoLockResult> findMissMatchTasks(Set<String> taskIds,List<HerculesTaskInfo> taskInDB,String executorRegion){
+        Map<String, TaskInfoLockResult> lockResults = new HashMap<>();
+        taskInDB.stream().filter(Objects::nonNull)
+                .filter(x->!Objects.equals(x.getExecutorRegion(),executorRegion)).forEach(task -> {
+                    lockResults.putIfAbsent(task.getId(),TaskInfoLockResult.REGION_MISMATCH);
+                });
+        List<HerculesTaskInfo> inRegionTaskInfo = taskInDB
+                .stream()
+                .filter(x->Objects.equals(x.getExecutorRegion(),executorRegion))
+                .collect(Collectors.toList());
+        Set<String> existsTasks =  inRegionTaskInfo.stream()
+                .map(HerculesTaskInfo::getId)
+                .collect(Collectors.toSet());
+        Set<String> notExistsIds = new HashSet<>(taskIds);
+        notExistsIds.removeAll(existsTasks);
+        notExistsIds.forEach(taskId -> {
+            lockResults.putIfAbsent(taskId,TaskInfoLockResult.NOT_EXIST);
+        });
+        return lockResults;
+    }
+
+    private Map<String, TaskInfoLockResult> lockBatchTask(Set<String> taskIds,String executorRegion,String executorId) {
+        Map<String, TaskInfoLockResult> lockResults = new HashMap<>();
+        Set<String> correctTaskIds = new HashSet<>(taskIds);
+        LambdaUpdateWrapper<HerculesTaskInfo> updateWrapper = new LambdaUpdateWrapper<HerculesTaskInfo>()
+                .in(HerculesTaskInfo::getId,correctTaskIds)
+                .eq(HerculesTaskInfo::getStatus, TaskStatus.INIT.name())
+                .eq(HerculesTaskInfo::getExecutorRegion,executorRegion)
+                .eq(HerculesTaskInfo::isEnable,true)
+                .isNull(HerculesTaskInfo::getOwnerId)
+                .set(HerculesTaskInfo::getOwnerId,executorId)
+                .set(HerculesTaskInfo::getStatus,TaskStatus.RUNNING.name());
+        boolean updateSuccess = executorTasksService.update(updateWrapper);
+        if(!updateSuccess){
+            correctTaskIds.forEach(taskId -> {
+                lockResults.putIfAbsent(taskId,TaskInfoLockResult.NOT_CLAIMED);
+            });
+        }else{
+            List<HerculesTaskInfo> taskInfosAfterUpdate = Optional.ofNullable(executorTasksService.listByIds(correctTaskIds))
+                    .orElse(new ArrayList<>());
+            List<String> lockNotSuccessTaskIds = taskInfosAfterUpdate.stream().filter(x->!Objects.equals(x.getOwnerId(),executorId))
+                    .map(HerculesTaskInfo::getId).collect(Collectors.toList());
+            lockNotSuccessTaskIds.forEach(taskId -> {
+                lockResults.putIfAbsent(taskId,TaskInfoLockResult.NOT_CLAIMED);
+            });
+            lockNotSuccessTaskIds.forEach(correctTaskIds::remove);
+            correctTaskIds.forEach(taskId -> {
+                lockResults.putIfAbsent(taskId,TaskInfoLockResult.SUCCESS);
+            });
+        }
+        return lockResults;
     }
 
 }

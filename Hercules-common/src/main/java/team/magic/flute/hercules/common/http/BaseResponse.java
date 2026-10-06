@@ -45,7 +45,7 @@ import org.apache.commons.lang3.StringUtils;
 public class BaseResponse<T> {
     /**
      * Response status code (HTTP-like).
-     * Typically 200 for success, 300+ for client errors, 500+ for server errors.
+     * Typically, 200 for success, 300+ for client errors, 500+ for server errors.
      */
     private int code;
 

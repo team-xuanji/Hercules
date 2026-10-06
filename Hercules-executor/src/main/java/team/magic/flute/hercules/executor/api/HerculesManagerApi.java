@@ -6,6 +6,7 @@ import feign.RequestLine;
 import feign.Response;
 import org.apache.commons.io.IOUtils;
 import team.magic.flute.hercules.common.http.BaseResponse;
+import team.magic.flute.hercules.common.http.BatchLockRequest;
 import team.magic.flute.hercules.common.http.HerculesHttpCompressType;
 import team.magic.flute.hercules.common.http.HerculesRunnableTaskInfo;
 import team.magic.flute.hercules.common.plugin.PluginResourceInfo;
@@ -114,6 +115,12 @@ public interface HerculesManagerApi {
             @Param("executorId")String executorId,
             @Param("taskId")String taskId,
             @Param("passSign") String passSign
+    );
+
+    @RequestLine("PUT /taskDispatch/tryLockBatchTask")
+    @Headers("Content-Type: application/json;charset=UTF-8")
+    BaseResponse<Boolean> tryLockBatchTask(
+            BatchLockRequest lockRequest
     );
 
     @RequestLine("PUT /taskDispatch/finishOneTask")
