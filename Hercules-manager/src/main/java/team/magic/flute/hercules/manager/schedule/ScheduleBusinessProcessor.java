@@ -65,7 +65,7 @@ public class ScheduleBusinessProcessor {
     /**
      * Clean up tasks that have been running for more than 10 minutes and whose ownerId does not correspond to a running executor.
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void changeDeadTaskToCancelled() {
         List<HerculesTaskInfo> deadTasks = tasksService.list(new LambdaQueryWrapper<HerculesTaskInfo>()
                 .eq(HerculesTaskInfo::getStatus, TaskStatus.RUNNING.name())

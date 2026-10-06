@@ -61,5 +61,5 @@ mybatis-plus:
 hercules:
   security:
     # AES GCM 256,Replace this KEY with the actual KEY in use
-    http-encrypt-key: "KHEV0o7G7pMARWUHjcpLOGnu2Nh7c9Rs0xPAsxJxGfw="
+    http-encrypt-key: "xxxxxxxx="
 

@@ -9,10 +9,10 @@ file-storage:
 
 api:
   app-open-api:
-    host: http://qa-cem-openapi.asics.com.cn
+    host: http://xxxxxx.com.cn
     name: hercules-manager
     version: v1
     caller: test
-    sign: 74657yKcwK48pARhJJK5B
+    sign: xxxxxxxxxxx
     headers:
-      whiteListAk: 1937007738505687040
+      whiteListAk: xxxxxxx

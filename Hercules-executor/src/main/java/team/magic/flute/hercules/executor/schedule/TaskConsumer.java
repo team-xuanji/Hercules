@@ -72,7 +72,6 @@ public class TaskConsumer {
 
     @Async
     @SneakyThrows(Exception.class)
-    @Transactional(rollbackFor = Exception.class)
     @Scheduled(fixedRate = 10000,initialDelay = 1000)
     public void reportInfo(){
         if(reportLock.tryLock()){

@@ -2,7 +2,7 @@ spring:
   datasource:
     url: "jdbc:mysql://localhost:3306/test?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf8&autoReconnect=true&allowMultiQueries=true&nullCatalogMeansCurrent=true"
     username: "root"
-    password: "7#xK!9@qZ$4vE%2P"
+    password: "xxxxxxxxxxxx"
 
 
 file-storage:
