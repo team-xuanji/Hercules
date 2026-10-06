@@ -18,7 +18,7 @@ public class TaskPluginContext {
     private static final int MAX_KEEP_VERSIONS = 3;
 
     public Set<String> getPluginGroups() {
-        return taskPluginContextDetailMap.keySet();
+        return new HashMap<>(taskPluginContextDetailMap).keySet();
     }
 
     public String getPluginGroupLatestVersion(String pluginGroup) {

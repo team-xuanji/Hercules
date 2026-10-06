@@ -65,7 +65,6 @@ public class ScheduleBusinessProcessor {
     /**
      * Clean up tasks that have been running for more than 10 minutes and whose ownerId does not correspond to a running executor.
      */
-    @Transactional(rollbackFor = Exception.class)
     public void changeDeadTaskToCancelled() {
         List<HerculesTaskInfo> deadTasks = tasksService.list(new LambdaQueryWrapper<HerculesTaskInfo>()
                 .eq(HerculesTaskInfo::getStatus, TaskStatus.RUNNING.name())
@@ -193,6 +192,7 @@ public class ScheduleBusinessProcessor {
     }
 
 
+    @Transactional(rollbackFor = Exception.class)
     public void cronJobProcess() throws Exception {
         List<String> runnerIds = managerInstanceCoordinator.getAllRunners();
         String currentRunnerId = managerInstanceCoordinator.getCurrentRunnerId();
@@ -255,6 +255,7 @@ public class ScheduleBusinessProcessor {
                 // Update scheduling task status using optimistic locking.
                 LambdaUpdateWrapper<HerculesCronJobs> updateWrapper = new LambdaUpdateWrapper<>();
                 if(taskUpdateInfo.getSnapshotAfterTrigger()!=null){
+                    updateWrapper.eq(HerculesCronJobs::getJobId, cronJob.getJobId());
                     if(taskUpdateInfo.getSnapshotBeforeTrigger()==null){
                         updateWrapper.isNull(HerculesCronJobs::getSnapshot);
                     }else{
@@ -271,9 +272,9 @@ public class ScheduleBusinessProcessor {
                         updateWrapper.set(HerculesCronJobs::getCheckpoint,null);
                     }
                     updateWrapper.set(HerculesCronJobs::getSnapshot,taskUpdateInfo.getSnapshotAfterTrigger());
-                }
-                if(!cronJobService.update(updateWrapper)){
-                    throw new IllegalStateException("Another executor instance has updated the scheduling task first. Please try again later!");
+                    if(!cronJobService.update(updateWrapper)){
+                        throw new IllegalStateException("Another executor instance has updated the scheduling task first. Please try again later!");
+                    }
                 }
             }
         }

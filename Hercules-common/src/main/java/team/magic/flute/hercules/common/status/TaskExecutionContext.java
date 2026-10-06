@@ -161,7 +161,7 @@ public class TaskExecutionContext implements Closeable {
     @Override
     public void close() throws IOException {
         try{
-            if(duckdbConnection!=null){
+            if(duckdbConnection!=null && !duckdbConnection.isClosed()){
                 duckdbConnection.close();
             }
             if(anotherContextMap!=null && !anotherContextMap.isEmpty()){

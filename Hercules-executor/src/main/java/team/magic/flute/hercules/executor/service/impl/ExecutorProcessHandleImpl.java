@@ -258,50 +258,58 @@ public class ExecutorProcessHandleImpl implements ExecutorProcessHandle, Closeab
     }
 
     private void process(DataSource duckDbDataSource,HerculesRunnableTaskInfo taskInfo,Map<String, TaskPlugin> pluginMap){
-        if(processInfoCache.add(taskInfo.getId()) && pluginMap.get(taskInfo.getPluginHandle())!=null){
-            log.info("Starting to process the task,id[{}],businessKey[{}]",taskInfo.getId(),taskInfo.getExecutorRegion());
-            try(TaskExecutionContext taskExecutionContext = new TaskExecutionContext()){
-                taskExecutionContext.setId(taskInfo.getId());
-                taskExecutionContext.setExecutionContext(taskInfo.getContext());
-                Integer maxRetryTimes = taskInfo.getMaxRetryTimes();
-                if(maxRetryTimes==null){
-                    maxRetryTimes = 3;
-                }
-                for(int i=0;i<maxRetryTimes;i++){
-                    try{
-                        if(runnerEnv.isEnableDuckdb()){
-                            processWithDuckdb(duckDbDataSource,taskExecutionContext,taskInfo,pluginMap);
-                        }else{
-                            processWithoutDuckdb(taskExecutionContext,taskInfo,pluginMap);
-                        }
-                        if(taskExecutionContext.getForwardRequest()!=null){
-                            for (HerculesRunnableTaskInfo request : taskExecutionContext.getForwardRequest()) {
-                                tryForward(request,taskExecutionContext.isForwardRequestMustWait());
+        if(processInfoCache.add(taskInfo.getId())){
+            if(pluginMap.get(taskInfo.getPluginHandle())!=null){
+                log.info("Starting to process the task,id[{}],businessKey[{}]",taskInfo.getId(),taskInfo.getExecutorRegion());
+                try(TaskExecutionContext taskExecutionContext = new TaskExecutionContext()){
+                    taskExecutionContext.setId(taskInfo.getId());
+                    taskExecutionContext.setExecutionContext(taskInfo.getContext());
+                    Integer maxRetryTimes = taskInfo.getMaxRetryTimes();
+                    if(maxRetryTimes==null){
+                        maxRetryTimes = 3;
+                    }
+                    for(int i=0;i<maxRetryTimes;i++){
+                        try{
+                            if(runnerEnv.isEnableDuckdb()){
+                                processWithDuckdb(duckDbDataSource,taskExecutionContext,taskInfo,pluginMap);
+                            }else{
+                                processWithoutDuckdb(taskExecutionContext,taskInfo,pluginMap);
+                            }
+                            if(taskExecutionContext.getForwardRequest()!=null){
+                                for (HerculesRunnableTaskInfo request : taskExecutionContext.getForwardRequest()) {
+                                    tryForward(request,taskExecutionContext.isForwardRequestMustWait());
+                                }
+                            }
+                            break;
+                        }catch (Exception e){
+                            log.error("Task execution failed, retry count [{}]",i);
+                            log.error(e.getMessage(),e);
+                            TimeUnit.SECONDS.sleep(1);
+                            if(i==maxRetryTimes-1){
+                                throw e;
                             }
                         }
-                        break;
-                    }catch (Exception e){
-                        log.error("Task execution failed, retry count [{}]",i);
-                        log.error(e.getMessage(),e);
-                        TimeUnit.SECONDS.sleep(1);
-                        if(i==maxRetryTimes-1){
-                            throw e;
+                    }
+                }catch (Exception e){
+                    log.error("Task execution failed, Task ID[{}]",taskInfo.getId(),e);
+                    if(StringUtils.isNotBlank(taskInfo.getAsyncRecoverContext()) && !"{}".equals(taskInfo.getAsyncRecoverContext().trim())){
+                        BaseResponse<PluginResourceInfo> response = managerApi.asyncRerunOneTask(new AsyncRetryOneTaskRequestVO()
+                                .setTaskId(taskInfo.getId())
+                                .setErrorMessage(Objects.toString(e.getMessage()).substring(0,500)));
+                        if(response.getCode()!= EnumResponseType.SUCCESS.getCode()){
+                            log.error("Asynchronous retry failed! Task ID [{}], Error message [{}]",taskInfo.getId(),response.getMsg());
                         }
                     }
+                    failed(taskInfo);
+                }finally {
+                    processInfoCache.remove(taskInfo.getId());
                 }
-            }catch (Exception e){
-                log.error("Task execution failed, Task ID[{}]",taskInfo.getId(),e);
-                if(StringUtils.isNotBlank(taskInfo.getAsyncRecoverContext()) && !"{}".equals(taskInfo.getAsyncRecoverContext().trim())){
-                    BaseResponse<PluginResourceInfo> response = managerApi.asyncRerunOneTask(new AsyncRetryOneTaskRequestVO()
-                            .setTaskId(taskInfo.getId())
-                            .setErrorMessage(Objects.toString(e.getMessage()).substring(0,500)));
-                    if(response.getCode()!= EnumResponseType.SUCCESS.getCode()){
-                        log.error("Asynchronous retry failed! Task ID [{}], Error message [{}]",taskInfo.getId(),response.getMsg());
-                    }
+            }else{
+                try {
+                    abandon(taskInfo);
+                } finally {
+                    processInfoCache.remove(taskInfo.getId());
                 }
-                failed(taskInfo);
-            }finally {
-                processInfoCache.remove(taskInfo.getId());
             }
         }else{
             if(pluginMap.get(taskInfo.getPluginHandle())==null){
@@ -342,7 +350,7 @@ public class ExecutorProcessHandleImpl implements ExecutorProcessHandle, Closeab
             plugin.execute(taskExecutionContext);
             success(taskExecutionContext);
         } finally {
-            if(duckdbConnection!=null){
+            if(duckdbConnection!=null && !duckdbConnection.isClosed()){
                 try{
                     duckdbConnection.close();
                 }catch(Exception e){
