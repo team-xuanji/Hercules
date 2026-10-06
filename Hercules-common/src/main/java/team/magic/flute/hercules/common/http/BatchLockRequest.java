@@ -9,6 +9,8 @@ import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 import java.util.List;
 
+import static team.magic.flute.hercules.common.global.Constant.BATCH_FETCH_MAX_SIZE;
+
 @Data
 @Accessors(chain=true)
 public class BatchLockRequest {
@@ -19,7 +21,7 @@ public class BatchLockRequest {
     @NotBlank
     private String executorRegion;
     @NotNull
-    @Size(max=200)
+    @Size(max=BATCH_FETCH_MAX_SIZE)
     @NotEmpty
     private List<String> taskIds;
 }

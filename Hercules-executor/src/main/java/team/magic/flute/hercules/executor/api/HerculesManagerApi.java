@@ -5,10 +5,7 @@ import feign.Param;
 import feign.RequestLine;
 import feign.Response;
 import org.apache.commons.io.IOUtils;
-import team.magic.flute.hercules.common.http.BaseResponse;
-import team.magic.flute.hercules.common.http.BatchLockRequest;
-import team.magic.flute.hercules.common.http.HerculesHttpCompressType;
-import team.magic.flute.hercules.common.http.HerculesRunnableTaskInfo;
+import team.magic.flute.hercules.common.http.*;
 import team.magic.flute.hercules.common.plugin.PluginResourceInfo;
 import team.magic.flute.hercules.common.util.AESUtils;
 import team.magic.flute.hercules.common.util.BinaryCompressUtils;
@@ -19,7 +16,6 @@ import team.magic.flute.hercules.executor.vo.FinishOneTaskRequestVO;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
 
@@ -59,7 +55,7 @@ public interface HerculesManagerApi {
      * @param fetchLimit
      * @return
      */
-    default Collection<HerculesRunnableTaskInfo> tryFastFetchTasks(
+    default TaskFetchResult tryFastFetchTasks(
             String executorRegion,
             String executorId,
             Integer fetchLimit,
@@ -94,9 +90,9 @@ public interface HerculesManagerApi {
             throw new RuntimeException("Failed to read response body", e);
         }
         if(data.length<1){
-            return new ArrayList<>();
+            return new TaskFetchResult();
         }
-        return ForyUtils.deserialize(data, Collection.class);
+        return ForyUtils.deserialize(data, TaskFetchResult.class);
     }
 
     @RequestLine("GET /taskDispatch/tryFetchTasksWithByteArray?executorRegion={executorRegion}&executorId={executorId}&fetchLimit={fetchLimit}&passSign={passSign}")
@@ -119,7 +115,7 @@ public interface HerculesManagerApi {
 
     @RequestLine("PUT /taskDispatch/tryLockBatchTask")
     @Headers("Content-Type: application/json;charset=UTF-8")
-    BaseResponse<Boolean> tryLockBatchTask(
+    BaseResponse<BatchTaskLockProcessResult> tryLockBatchTask(
             BatchLockRequest lockRequest
     );
 

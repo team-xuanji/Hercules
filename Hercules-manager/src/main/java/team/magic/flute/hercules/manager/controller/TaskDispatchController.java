@@ -55,13 +55,14 @@ public class TaskDispatchController {
     private HerculesPluginManagerService pluginManagerService;
 
 
-    private List<HerculesRunnableTaskInfo> fetchTasks(String executorId,
+    private TaskFetchResult fetchTasks(String executorId,
                       String executorRegion,
                       Integer fetchLimit,
                       boolean encrypt){
         Tuple2<Integer,Integer> fetchRange = executorInfoService.getConsumeRange(executorId,executorRegion);
         int begin = fetchRange.getKey();
         int end = fetchRange.getValue();
+        boolean crossAllBucket = begin==1 && end == TASK_MAX_BUCKET_SIZE+1;
         List<HerculesTaskInfo> taskInfoList = executorTasksService.list(new LambdaQueryWrapper<HerculesTaskInfo>()
                 .eq(HerculesTaskInfo::getStatus, TaskStatus.INIT.name())
                 .eq(HerculesTaskInfo::getExecutorRegion,executorRegion)
@@ -73,10 +74,13 @@ public class TaskDispatchController {
                 .last("LIMIT "+fetchLimit));
         if(taskInfoList.isEmpty()){
             log.warn("Unable to retrieve task information.range[{}],executorId[{}],executorRegion[{}]", JacksonUtils.writeValueAsString(fetchRange),executorId,executorRegion);
-            return new ArrayList<>();
+            return new TaskFetchResult();
         }
-        return taskInfoList.stream().map(x-> DTOConvertUtils.parse2RunnableTaskInfo(x,encrypt, runnerEnv.getHttpEncryptKey(), AESUtils.generateIV()))
+        List<HerculesRunnableTaskInfo> data =  taskInfoList.stream().map(x-> DTOConvertUtils.parse2RunnableTaskInfo(x,encrypt, runnerEnv.getHttpEncryptKey(), AESUtils.generateIV()))
                 .collect(Collectors.toList());
+        return new TaskFetchResult()
+                .setCrossPartition(crossAllBucket)
+                .setTaskInfoList(data);
     }
 
     @GetMapping("/tryFetchTasksWithByteArray")
@@ -92,7 +96,7 @@ public class TaskDispatchController {
         if(fetchLimit==null || fetchLimit<=0){
             fetchLimit = 10;
         }
-        List<HerculesRunnableTaskInfo> fetchTasks = fetchTasks(executorId, executorRegion, fetchLimit, false);
+        TaskFetchResult fetchTasks = fetchTasks(executorId, executorRegion, fetchLimit, false);
         byte[] data = new byte[0];
         HttpHeaders headers;
         byte[] compressed;

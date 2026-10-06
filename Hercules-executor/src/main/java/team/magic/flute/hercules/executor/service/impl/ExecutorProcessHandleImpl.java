@@ -398,15 +398,26 @@ public class ExecutorProcessHandleImpl implements ExecutorProcessHandle, Closeab
 
     @Override
     public long aliveAbleSlot() {
-        if(executor.getQueue().size()<totalSlot()*3){
-            return Math.max(1,executor.getMaximumPoolSize() - executor.getActiveCount());
-        }
-        return 0;
+        return Math.max(0,totalSlot()-executor.getActiveCount());
     }
 
     @Override
     public void close() throws IOException {
         executor.shutdownNow();
+    }
+
+    @Override
+    public long queueCapacity(){
+        return Math.max(0,allowedMaxQueueSize()+totalSlot()-executor.getActiveCount());
+    }
+
+    @Override
+    public boolean isNowBusy(){
+        return aliveAbleSlot()==0 && (queueCapacity()*1.0/allowedMaxQueueSize())>0.5;
+    }
+
+    private long allowedMaxQueueSize(){
+        return totalSlot()*3;
     }
 
     private File createTempDir(String pluginGroup) throws IOException {

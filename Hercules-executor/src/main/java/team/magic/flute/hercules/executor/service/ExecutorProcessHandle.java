@@ -60,6 +60,10 @@ public interface ExecutorProcessHandle {
      */
     long aliveAbleSlot();
 
+    long queueCapacity();
+
+    boolean isNowBusy();
+
     /**
      * Load plugins for a specific plugin group.
      *
