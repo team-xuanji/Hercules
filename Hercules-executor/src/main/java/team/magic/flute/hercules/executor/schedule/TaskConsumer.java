@@ -8,7 +8,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 import team.magic.flute.hercules.common.executor.ExecutorCurrentLoadPluginInfo;
 import team.magic.flute.hercules.common.executor.HerculesExecutorHeartbeatInfo;
 import team.magic.flute.hercules.common.global.ExecutorTaskOps;
