@@ -14,7 +14,7 @@ import java.util.concurrent.locks.ReentrantLock;
 @Slf4j
 @EnableAsync
 public class DataCleanupScheduler {
-    private final Lock taskScheduleLock = new ReentrantLock();
+    private final ReentrantLock taskScheduleLock = new ReentrantLock();
     @Autowired
     private ManagerInstanceCoordinator managerInstanceCoordinator;
     @Autowired
@@ -39,7 +39,9 @@ public class DataCleanupScheduler {
             log.error("Execution of metadata compression task failed!");
             log.error(e.getMessage(),e);
         }finally {
-            taskScheduleLock.unlock();
+            if(taskScheduleLock.isHeldByCurrentThread()){
+                taskScheduleLock.unlock();
+            }
         }
         log.debug("Metadata compression task execution completed");
     }

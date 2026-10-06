@@ -36,9 +36,6 @@ public class RunnerEnv implements EnvironmentAware {
 
     @Override
     public void setEnvironment(Environment environment) {
-        this.runnerInstanceId = "EXECUTOR_INSTANCE_"+ executorRegion +"_"+ GUID.v7();
-        this.runnerIdentityId = "EXECUTOR_IDENTITY_"+ executorRegion +"_"+ GUID.v7();
-
         String whiteListStr = environment.getProperty(Constant.PLUGIN_WHITE_LIST,String.class,"");
         if(StringUtils.isBlank(whiteListStr)){
             this.pluginWhiteList = new ArrayList<>();
@@ -57,5 +54,7 @@ public class RunnerEnv implements EnvironmentAware {
         this.duckdbSpillPath = environment.getProperty(Constant.DUCKDB_SPILL_PATH,Constant.DEFAULT_DUCKDB_SPILL_PATH);
         this.duckdbMemGBSize = environment.getProperty(Constant.DUCKDB_MEM_GB_SIZE,int.class,Constant.DEFAULT_DUCKDB_MEM_GB_SIZE);
         this.duckdbSpillGBSize = environment.getProperty(Constant.DUCKDB_SPILL_GB_SIZE,int.class,Constant.DEFAULT_DUCKDB_SPILL_GB_SIZE);
+        this.runnerInstanceId = "EXECUTOR_INSTANCE_"+ executorRegion +"_"+ GUID.v7();
+        this.runnerIdentityId = "EXECUTOR_IDENTITY_"+ executorRegion +"_"+ GUID.v7();
     }
 }

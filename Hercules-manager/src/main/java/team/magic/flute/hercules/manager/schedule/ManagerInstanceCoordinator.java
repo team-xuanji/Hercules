@@ -27,7 +27,7 @@ public class ManagerInstanceCoordinator {
     private RunnerEnv runnerEnv;
     @Autowired
     private HerculesManagerInstanceService triggerRunnerService;
-    private List<String> runnerIds = new ArrayList<>();
+    private volatile List<String> runnerIds = new ArrayList<>();
     private final Lock taskScheduleLock = new ReentrantLock();
     @Async
     @SneakyThrows(Exception.class)

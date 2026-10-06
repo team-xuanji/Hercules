@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/taskDispatch")
 @Slf4j
-@Profile("qa | local | dev")
+@Profile({"qa","local","dev"})
 public class TaskDispatchQAController {
     @Autowired
     private HerculesExecutorTasksService executorTasksService;

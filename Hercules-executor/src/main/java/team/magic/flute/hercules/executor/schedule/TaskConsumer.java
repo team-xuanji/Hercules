@@ -21,7 +21,10 @@ import team.magic.flute.hercules.executor.service.ExecutorProcessHandle;
 import team.magic.flute.hercules.executor.vo.ExecutorInfoReportRequestVO;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -122,7 +125,6 @@ public class TaskConsumer {
      */
     @Async
     @SneakyThrows(Exception.class)
-    @Transactional(rollbackFor = Exception.class)
     @Scheduled(fixedRate = 10000,initialDelay = 30000)
     public void run(){
         if(reportSuccess && taskScheduleLock.tryLock()){
