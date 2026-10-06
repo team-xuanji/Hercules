@@ -194,12 +194,13 @@ public class TaskConsumer {
 
     private void handleOneTask(HerculesRunnableTaskInfo taskInfo) throws IOException {
         /*
-         * Theoretically, only passing the plugin_handle should be sufficient,
-         * but that would require querying the database, which I found too troublesome.
-         * So I just had the upstream carry it along.
-         * As a result, if a user moves a pluginHandle to a different group,
-         * it can't be handled properly now.
-         * But honestly, I can't be bothered to deal with it—let it be. _(:з」∠)_
+         * The group/handle mapping is validated at lock time: a task whose
+         * pluginHandle has drifted from its group is cancelled by the manager
+         * (PLUGIN_DRIFT) before it ever reaches an executor, so the mapping
+         * carried here is trustworthy for every task that was locked
+         * successfully. Mappings may still change while the task runs; old
+         * classloaders are retained for in-flight tasks, so execution
+         * completes on the version that was current at load time.
          * */
         executorProcessHandle.loadPlugin(taskInfo.getPluginGroup());
         /*

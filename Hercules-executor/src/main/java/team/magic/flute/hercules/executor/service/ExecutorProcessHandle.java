@@ -60,8 +60,23 @@ public interface ExecutorProcessHandle {
      */
     long aliveAbleSlot();
 
+    /**
+     * Get the number of task infos this executor can accept on top of the
+     * currently active ones — i.e. how many tasks a single fetch+lock round
+     * should ask for. Includes both free slots and the remaining queue
+     * headroom ({@code 3 x totalSlot}), and never goes below zero.
+     *
+     * @return the number of additional tasks the executor can buffer
+     */
     long queueCapacity();
 
+    /**
+     * Whether the executor is saturated: no free slot and the internal queue
+     * is more than half full. Used by the consumer to back off fetch frequency
+     * before the executor runs out of buffering headroom.
+     *
+     * @return true when there is no free slot and queue usage exceeds 50%
+     */
     boolean isNowBusy();
 
     /**

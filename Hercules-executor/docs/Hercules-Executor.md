@@ -15,8 +15,9 @@ The Hercules Executor follows a **stateless, HTTP-only architecture** for all ta
 - **Plugin-Based Execution**: Dynamic plugin loading with isolated execution environments
 
 ### HTTP API Operations:
-- `tryFetchTasksWithByteArray`: Poll for available tasks (binary payload, encrypted with the configured key; plaintext `tryFetchTasks` is QA-only)
-- `tryLockOneTask`: Lock tasks for exclusive execution
+- `tryFetchTasksWithByteArray`: Poll for available tasks (binary payload, encrypted with the configured key; request signed with `passSign`; plaintext `tryFetchTasks` is QA-only)
+- `tryLockBatchTask`: Lock a batch of tasks in one signed request (up to `BATCH_FETCH_MAX_SIZE`, 200)
+- `tryLockOneTask`: Lock a single task for exclusive execution (compatibility shim over the batch endpoint; used in cross-partition fetch mode)
 - `finishOneTask`: Report successful task completion
 - `asyncRerunOneTask`: Request task retry coordination
 - `reportExecutorInfo`: Report executor status and capacity
@@ -85,12 +86,13 @@ Seamless integration with Hercules Manager and external systems:
 ## Architecture Components
 
 ### Execution Flow
-1. **Task Polling**: TaskConsumer periodically polls for available tasks via HTTP API (`tryFetchTasksWithByteArray`, binary payload encrypted with the configured key)
-2. **Task Locking**: Tasks are locked for execution via HTTP API (`tryLockOneTask`)
-3. **Plugin Loading**: Required plugins are downloaded and loaded dynamically
-4. **Task Execution**: Tasks are executed in isolated thread pools with proper resource management
-5. **Status Reporting**: Execution status and results are reported back via HTTP API (`finishOneTask`)
-6. **Resource Cleanup**: Temporary resources are cleaned up after execution
+1. **Task Polling**: TaskConsumer periodically polls for available tasks via HTTP API (`tryFetchTasksWithByteArray`, binary payload encrypted with the configured key). The fetch size adapts to remaining queue capacity, capped at `BATCH_FETCH_MAX_SIZE` (200). When the manager cannot compute this executor's bucket range yet (e.g. right after a restart), the response is flagged `crossPartition` and covers all buckets.
+2. **Whitelist Filtering**: Tasks whose `pluginHandle` is not in the executor's whitelist are dropped before locking.
+3. **Task Locking**: Tasks are locked via HTTP API — normally in one batch (`tryLockBatchTask`); in cross-partition mode, per task (`tryLockOneTask`) to reduce contention.
+4. **Plugin Loading**: Required plugins are downloaded and loaded dynamically
+5. **Task Execution**: Tasks are executed in isolated thread pools with proper resource management
+6. **Status Reporting**: Execution status and results are reported back via HTTP API (`finishOneTask`)
+7. **Resource Cleanup**: Temporary resources are cleaned up after execution
 
 ### Plugin System
 - **Plugin Discovery**: Automatic discovery of plugin implementations using ServiceLoader
@@ -177,6 +179,7 @@ Seamless integration with Hercules Manager and external systems:
 
 ### Security Features:
 - Plugin classloader isolation
+- Signed operations: every task op (fetch/lock/finish/fail/abandon) carries a per-executor-instance HMAC signature (`passSign`)
 - Secure resource downloading with validation
 - Environment-specific configuration isolation
 - Input validation and sanitization

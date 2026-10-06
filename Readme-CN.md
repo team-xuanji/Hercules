@@ -150,7 +150,7 @@ Hercules采用模块化的微服务架构，专为可扩展性和可维护性而
 - **主要特性**:
   - **无状态架构**: 无直接数据库访问，纯HTTP通信
   - **Feign客户端集成**: 通过`HerculesManagerApi`进行RESTful任务管理
-  - **HTTP任务生命周期**: `tryFetchTasksWithByteArray` → `tryLockOneTask` → `finishOneTask`/`failOneTask`
+  - **HTTP任务生命周期**: `tryFetchTasksWithByteArray` → `tryLockBatchTask`/`tryLockOneTask` → `finishOneTask`/`failOneTask`
   - **多线程执行**: 可配置任务执行插槽和线程池
   - **动态插件加载**: 白名单安全和远程插件下载
   - **基于区域的组织架构**: 更好的资源管理和地理分布

@@ -169,6 +169,15 @@ public class TaskDispatchController {
         }
     }
 
+    /**
+     * Batch-lock entry point. Verifies the executor signature (bound to the
+     * sorted task-id subject, see {@code ExecutorInfoUtils.buildSignSubject}),
+     * classifies every requested id, cancels tasks whose pluginHandle has
+     * drifted from its group, and claims the remainder with a single
+     * conditional UPDATE. One {@link TaskInfoLockResult} is reported per
+     * requested id; a null {@code lockResults} map is only possible for an
+     * empty request. Signing scheme: ADR-0001.
+     */
     @PutMapping("/tryLockBatchTask")
     public BaseResponse<BatchTaskLockProcessResult> tryLockBatchTask(@Valid @RequestBody BatchLockRequest batchLockRequest){
         String executorId = batchLockRequest.getExecutorId();
@@ -379,6 +388,16 @@ public class TaskDispatchController {
         return lockResults;
     }
 
+    /**
+     * Claim tasks with one conditional UPDATE (status=INIT, enabled, no owner),
+     * then re-read the affected rows to classify them: rows now owned by this
+     * executor are SUCCESS, anything else is reported as NOT_CLAIMED.
+     *
+     * <p>The UPDATE is atomic per row, so two competing executors can never
+     * co-own a task. Races between the UPDATE and the re-read (e.g. a task
+     * being reset by dead-task recovery in between) can only yield a
+     * pessimistic NOT_CLAIMED — a safe outcome for callers to retry.
+     */
     private Map<String, TaskInfoLockResult> lockBatchTask(Set<String> taskIds,String executorRegion,String executorId) {
         Map<String, TaskInfoLockResult> lockResults = new HashMap<>();
         Set<String> correctTaskIds = new HashSet<>(taskIds);

@@ -151,7 +151,7 @@ Hercules follows a modular, microservices architecture designed for scalability 
 - **Key Features**:
   - **Stateless Architecture**: No direct database access, pure HTTP communication
   - **Feign Client Integration**: RESTful task management via `HerculesManagerApi`
-  - **HTTP Task Lifecycle**: `tryFetchTasksWithByteArray` → `tryLockOneTask` → `finishOneTask`/`failOneTask`
+  - **HTTP Task Lifecycle**: `tryFetchTasksWithByteArray` → `tryLockBatchTask`/`tryLockOneTask` → `finishOneTask`/`failOneTask`
   - **Multi-threaded Execution**: Configurable task execution slots with thread pool
   - **Dynamic Plugin Loading**: White list security and remote plugin downloading
   - **Region-based Organization**: Better resource management and geographical distribution
@@ -732,7 +732,7 @@ The primary way to use Hercules is through direct interaction with the Manager m
 
 > **Architecture Note**: Hercules-Executor uses HTTP-only communication with the Manager. The executor:
 > - Fetches tasks via `GET /taskDispatch/tryFetchTasksWithByteArray` (binary payload, encrypted with `hercules.security.http-encrypt-key`; plaintext `tryFetchTasks` is `qa`-profile only)
-> - Locks tasks via `PUT /taskDispatch/tryLockOneTask`
+> - Locks tasks via `PUT /taskDispatch/tryLockBatchTask` (batch, up to 200; falls back to per-task `tryLockOneTask` in cross-partition fetch mode)
 > - Reports completion via `PUT /taskDispatch/finishOneTask`
 > - Reports failures via `PUT /taskDispatch/failOneTask`
 > - Signs every operation (including fetch) with a per-executor HMAC (`passSign`)

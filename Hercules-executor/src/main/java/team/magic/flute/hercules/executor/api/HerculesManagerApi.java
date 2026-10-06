@@ -48,12 +48,18 @@ public interface HerculesManagerApi {
     );
 
     /**
-     * We use a serialization framework to directly transmit byte arrays,
-     * avoiding the performance overhead caused by JSON serialization.
-     * @param executorRegion
-     * @param executorId
-     * @param fetchLimit
-     * @return
+     * Fetch runnable tasks over the binary channel: the response is a
+     * Fory-serialized {@link TaskFetchResult} (optionally compressed and/or
+     * encrypted via response headers), avoiding JSON serialization overhead.
+     *
+     * @param executorRegion business group of the executor
+     * @param executorId     per-boot instance id
+     * @param fetchLimit     maximum number of tasks to return
+     * @param aesKey         channel key used only when the response carries an AES IV header
+     * @param passSign       HMAC of {@code executorId + ":FETCH"}, see ADR-0001
+     * @return the fetch result; {@link TaskFetchResult#isEmpty()} when there is nothing to do.
+     *         {@link TaskFetchResult#isCrossPartition()} signals an all-bucket fallback scan
+     * @throws RuntimeException on non-200 status or unreadable body
      */
     default TaskFetchResult tryFastFetchTasks(
             String executorRegion,
@@ -104,6 +110,12 @@ public interface HerculesManagerApi {
             @Param("passSign") String passSign
     );
 
+    /**
+     * Lock a single task. Server-side this is a compatibility shim over the
+     * batch endpoint: same validation, same drift cancellation, and
+     * {@code data=false} (not an error) when the task is already claimed by
+     * someone else. Prefer {@link #tryLockBatchTask} for the poll loop.
+     */
     @RequestLine("PUT /taskDispatch/tryLockOneTask?executorRegion={executorRegion}&executorId={executorId}&taskId={taskId}&passSign={passSign}")
     @Headers("Content-Type: application/json;charset=UTF-8")
     BaseResponse<Boolean> tryLockOneTask(
@@ -113,6 +125,16 @@ public interface HerculesManagerApi {
             @Param("passSign") String passSign
     );
 
+    /**
+     * Lock a batch of tasks in one round trip. The request is signed over the
+     * sorted, comma-joined task id list (see {@code ExecutorInfoUtils.buildSignSubject}).
+     * Per-task outcomes are reported in {@link BatchTaskLockProcessResult#getLockResults()};
+     * a missing or non-{@link TaskInfoLockResult#SUCCESS} entry means the task
+     * must be skipped. Drifted tasks are cancelled server-side.
+     *
+     * @param lockRequest executor identity, region, signature and up to
+     *                    {@code Constant.BATCH_FETCH_MAX_SIZE} task ids
+     */
     @RequestLine("PUT /taskDispatch/tryLockBatchTask")
     @Headers("Content-Type: application/json;charset=UTF-8")
     BaseResponse<BatchTaskLockProcessResult> tryLockBatchTask(

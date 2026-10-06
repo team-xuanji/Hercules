@@ -406,16 +406,26 @@ public class ExecutorProcessHandleImpl implements ExecutorProcessHandle, Closeab
         executor.shutdownNow();
     }
 
+    /**
+     * Buffer headroom for one fetch round: free slots plus the unfilled part
+     * of the bounded internal queue ({@code 3 x totalSlot}).
+     */
     @Override
     public long queueCapacity(){
         return Math.max(0,allowedMaxQueueSize()+totalSlot()-executor.getActiveCount());
     }
 
+    /**
+     * Saturated = pool fully active AND the queue already more than half full.
+     * The consumer stretches its polling watermark on this signal, before the
+     * headroom actually runs out.
+     */
     @Override
     public boolean isNowBusy(){
         return aliveAbleSlot()==0 && (queueCapacity()*1.0/allowedMaxQueueSize())>0.5;
     }
 
+    /** Upper bound of the executor's internal queue, expressed in slot units. */
     private long allowedMaxQueueSize(){
         return totalSlot()*3;
     }

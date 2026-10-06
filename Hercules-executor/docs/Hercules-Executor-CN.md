@@ -15,8 +15,9 @@ Hercules Executor 采用**无状态、纯 HTTP 架构**进行所有任务管理�
 - **基于插件的执行**：动态插件加载与隔离执行环境
 
 ### HTTP API 操作：
-- `tryFetchTasksWithByteArray`：从管理器轮询可用任务（二进制载荷，使用配置的密钥加密；明文 `tryFetchTasks` 仅 QA 环境可用）
-- `tryLockOneTask`：锁定任务进行独占执行
+- `tryFetchTasksWithByteArray`：从管理器轮询可用任务（二进制载荷，使用配置的密钥加密；请求携带 `passSign` 签名；明文 `tryFetchTasks` 仅 QA 环境可用）
+- `tryLockBatchTask`：一次签名请求批量锁定任务（上限 `BATCH_FETCH_MAX_SIZE`，200）
+- `tryLockOneTask`：锁定单个任务独占执行（批量端点的兼容 shim；跨分区拉取模式下使用）
 - `finishOneTask`：报告任务成功完成
 - `asyncRerunOneTask`：请求任务重试协调
 - `reportExecutorInfo`：报告执行器状态和容量
@@ -85,12 +86,13 @@ Hercules Executor 通过 `ExecutorProcessHandle` 提供强大的任务执行能�
 ## 架构组件
 
 ### 执行流程
-1. **任务轮询**：TaskConsumer 通过 HTTP API (`tryFetchTasksWithByteArray`，使用配置密钥加密的二进制载荷) 定期轮询可用任务
-2. **任务锁定**：通过 HTTP API (`tryLockOneTask`) 锁定任务进行执行
-3. **插件加载**：动态下载和加载所需插件
-4. **任务执行**：在具有适当资源管理的隔离线程池中执行任务
-5. **状态报告**：通过 HTTP API (`finishOneTask`) 将执行状态和结果报告回管理器
-6. **资源清理**：执行后清理临时资源
+1. **任务轮询**：TaskConsumer 通过 HTTP API (`tryFetchTasksWithByteArray`，使用配置的密钥加密的二进制载荷) 定期轮询可用任务。拉取量随剩余队列容量自适应，上限 `BATCH_FETCH_MAX_SIZE`（200）。当 manager 尚无法计算本执行器的分桶区间时（如重启后），响应会打上 `crossPartition` 标记、覆盖全部桶。
+2. **白名单过滤**：`pluginHandle` 不在执行器白名单内的任务在加锁前被丢弃。
+3. **任务锁定**：通过 HTTP API 锁定任务——常规模式下批量锁定（`tryLockBatchTask`）；跨分区模式下逐任务锁定（`tryLockOneTask`）以降低冲突。
+4. **插件加载**：动态下载和加载所需插件
+5. **任务执行**：在具有适当资源管理的隔离线程池中执行任务
+6. **状态报告**：通过 HTTP API (`finishOneTask`) 将执行状态和结果报告回管理器
+7. **资源清理**：执行后清理临时资源
 
 ### 插件系统
 - **插件发现**：使用 ServiceLoader 自动发现插件实现
