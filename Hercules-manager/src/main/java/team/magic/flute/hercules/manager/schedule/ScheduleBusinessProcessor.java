@@ -65,11 +65,12 @@ public class ScheduleBusinessProcessor {
     /**
      * Clean up tasks that have been running for more than 10 minutes and whose ownerId does not correspond to a running executor.
      */
+    @Transactional(rollbackFor = Exception.class)
     public void changeDeadTaskToCancelled() {
         List<HerculesTaskInfo> deadTasks = tasksService.list(new LambdaQueryWrapper<HerculesTaskInfo>()
                 .eq(HerculesTaskInfo::getStatus, TaskStatus.RUNNING.name())
                 .lt(HerculesTaskInfo::getUpdateTime, LocalDateTime.now().minusSeconds(600))
-                .last(" limit 100")
+                .last(" limit 10")
         );
         if(deadTasks.isEmpty()){
             log.info("No dead tasks found");
@@ -192,7 +193,6 @@ public class ScheduleBusinessProcessor {
     }
 
 
-    @Transactional(rollbackFor = Exception.class)
     public void cronJobProcess() throws Exception {
         List<String> runnerIds = managerInstanceCoordinator.getAllRunners();
         String currentRunnerId = managerInstanceCoordinator.getCurrentRunnerId();
@@ -238,7 +238,7 @@ public class ScheduleBusinessProcessor {
             CronTaskContext cronTaskContext = cronJob.getContext();
             TaskUpdateInfo taskUpdateInfo = cronTaskContext.parseTaskContext(cronJob);
             if(taskUpdateInfo.getId()==null){
-                return;
+                continue;
             }
             if(taskUpdateInfo.getDispatchTasks()!=null && !taskUpdateInfo.getDispatchTasks().isEmpty()){
                 List<HerculesTaskInfo> exists =tasksService.listByIds(taskUpdateInfo.getDispatchTasks().stream().map(HerculesTaskInfo::getId)
@@ -275,6 +275,8 @@ public class ScheduleBusinessProcessor {
                     if(!cronJobService.update(updateWrapper)){
                         throw new IllegalStateException("Another executor instance has updated the scheduling task first. Please try again later!");
                     }
+                }else{
+                    log.warn("Skipped updating CRON task] because this CRON task produced no valid checkpoint information.ID=[{}]",cronJob.getJobId());
                 }
             }
         }

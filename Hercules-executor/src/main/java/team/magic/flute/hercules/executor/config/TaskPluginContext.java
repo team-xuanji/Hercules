@@ -8,13 +8,14 @@ import team.magic.flute.hercules.common.plugin.TaskPlugin;
 import java.net.URLClassLoader;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 
 @Slf4j
 public class TaskPluginContext {
-    private final Map<String,Map<String,TaskPluginContextDetail>> taskPluginContextDetailMap = new HashMap<>();
-    private final Map<String,String> pluginGroupLatestVersion = new HashMap<>();
+    private final Map<String,Map<String,TaskPluginContextDetail>> taskPluginContextDetailMap = new ConcurrentHashMap<>();
+    private final Map<String,String> pluginGroupLatestVersion = new ConcurrentHashMap<>();
     private static final int MAX_KEEP_VERSIONS = 3;
 
     public Set<String> getPluginGroups() {

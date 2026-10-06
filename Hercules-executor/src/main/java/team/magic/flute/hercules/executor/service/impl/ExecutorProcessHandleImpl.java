@@ -349,10 +349,12 @@ public class ExecutorProcessHandleImpl implements ExecutorProcessHandle, Closeab
             }
             plugin.execute(taskExecutionContext);
             success(taskExecutionContext);
+            taskExecutionContext.setDuckdbConnection(null);
         } finally {
             if(duckdbConnection!=null && !duckdbConnection.isClosed()){
                 try{
                     duckdbConnection.close();
+                    taskExecutionContext.setDuckdbConnection(null);
                 }catch(Exception e){
                     // The JNI of duckdb is not necessarily stable. So do not use try-with-resource.
                     log.error("DuckDB close failed, rebuilding", e);
