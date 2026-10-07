@@ -273,7 +273,7 @@ public class ScheduleBusinessProcessor {
                     }
                     updateWrapper.set(HerculesCronJobs::getSnapshot,taskUpdateInfo.getSnapshotAfterTrigger());
                     if(!cronJobService.update(updateWrapper)){
-                        throw new IllegalStateException("Another executor instance has updated the scheduling task first. Please try again later!");
+                        log.error("Another executor instance has updated the scheduling task first. Please try again later!");
                     }
                 }else{
                     log.warn("Skipped updating CRON task] because this CRON task produced no valid checkpoint information.ID=[{}]",cronJob.getJobId());
