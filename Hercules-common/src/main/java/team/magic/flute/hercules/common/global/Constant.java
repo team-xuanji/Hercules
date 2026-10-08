@@ -37,5 +37,4 @@ public class Constant {
     public final static String HERCULES_BINARY_RESP_AES_IV = "HERCULES_BINARY_RESP_AES_IV";
 
     public final static int BATCH_FETCH_MAX_SIZE = 200;
-
 }

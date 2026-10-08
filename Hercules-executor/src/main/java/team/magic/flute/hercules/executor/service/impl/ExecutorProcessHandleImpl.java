@@ -10,13 +10,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import team.magic.flute.hercules.common.classloader.LocalJarURLStreamHandlerFactory;
 import team.magic.flute.hercules.common.global.ExecutorTaskOps;
-import team.magic.flute.hercules.common.http.PluginDesc;
 import team.magic.flute.hercules.common.http.BaseResponse;
 import team.magic.flute.hercules.common.http.EnumResponseType;
 import team.magic.flute.hercules.common.http.HerculesRunnableTaskInfo;
+import team.magic.flute.hercules.common.http.PluginDesc;
 import team.magic.flute.hercules.common.plugin.PluginResourceInfo;
 import team.magic.flute.hercules.common.plugin.TaskPlugin;
 import team.magic.flute.hercules.common.status.TaskExecutionContext;
+import team.magic.flute.hercules.common.status.TaskStatus;
+import team.magic.flute.hercules.common.status.TaskType;
 import team.magic.flute.hercules.common.util.ExecutorInfoUtils;
 import team.magic.flute.hercules.common.util.StrFormat;
 import team.magic.flute.hercules.executor.api.HerculesManagerApi;
@@ -31,7 +33,6 @@ import team.magic.flute.hercules.executor.vo.FinishOneTaskRequestVO;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
-import javax.sql.DataSource;
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
@@ -43,10 +44,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 @Service
 @Slf4j
@@ -54,7 +52,7 @@ public class ExecutorProcessHandleImpl implements ExecutorProcessHandle, Closeab
     @Autowired
     private RunnerEnv runnerEnv;
     private ThreadPoolExecutor executor;
-    private HikariDataSource dataSource;
+    private volatile HikariDataSource dataSource;
     @Autowired
     private HerculesManagerApi managerApi;
     @Autowired
@@ -63,7 +61,6 @@ public class ExecutorProcessHandleImpl implements ExecutorProcessHandle, Closeab
     private FileStorage fileStorage;
 
     private Cache<String,String> pluginVersionCache;
-    private final Set<String> processInfoCache = ConcurrentHashMap.newKeySet();
 
     private TaskPluginContext taskPluginContext;
 
@@ -128,7 +125,7 @@ public class ExecutorProcessHandleImpl implements ExecutorProcessHandle, Closeab
             return;
         }
         log.info("Loading plugin [{}]",pluginGroup);
-        Map<String,TaskPlugin> subPluginMap = new HashMap<>();
+        Map<String,TaskPlugin> subPluginMap = new ConcurrentHashMap<>();
         Map<String,URI> pluginInfos = pluginResource.getData().getResources();
         log.info("Plugin group [{}] Jar resource download started", pluginResourceInfo.getPluginGroup());
         URL[] urls;
@@ -154,8 +151,8 @@ public class ExecutorProcessHandleImpl implements ExecutorProcessHandle, Closeab
         }
         taskPluginContext.addContextDetail(pluginResourceInfo,classLoader,subPluginMap);
         cleanUpOldPlugin(pluginResourceInfo.getPluginGroup());
-        pluginVersionCache.put(pluginResourceInfo.getPluginGroup(),pluginResourceInfo.getVersionId());
         initPlugin(pluginResourceInfo.getPluginGroup());
+        pluginVersionCache.put(pluginResourceInfo.getPluginGroup(),pluginResourceInfo.getVersionId());
     }
 
     @Override
@@ -214,161 +211,172 @@ public class ExecutorProcessHandleImpl implements ExecutorProcessHandle, Closeab
 
     @Override
     public void handle(HerculesRunnableTaskInfo taskInfo) {
-        if(runnerEnv.isEnableDuckdb() && System.currentTimeMillis()>duckdbConnectionTTL && aliveAbleSlot()==totalSlot()){
-            synchronized (this){
-                if(runnerEnv.isEnableDuckdb() && System.currentTimeMillis()>duckdbConnectionTTL && aliveAbleSlot()==totalSlot()){
-                    rebuildDuckdbDataSource();
-                }
-            }
-        }
-        if(aliveAbleSlot()>0 || executor.getQueue().size()<totalSlot()*3){
-            synchronized (this) {
-                if(aliveAbleSlot()>0 || executor.getQueue().size()<totalSlot()*3){
-                    executor.execute(()->process(dataSource,
-                            taskInfo,
-                            taskPluginContext.getLatestPluginMap(taskInfo.getPluginGroup()))
-                    );
-                } else {
-                    log.warn("The executor is busy and cannot process new tasks. Task ID[{}]",taskInfo.getId());
-                    abandon(taskInfo);
-                }
-            }
-        } else {
-            log.warn("The executor is busy and cannot process new tasks. Task ID[{}]",taskInfo.getId());
-            abandon(taskInfo);
-        }
-    }
-
-    private void tryForward(HerculesRunnableTaskInfo forwardRequest, boolean forwardRequestMustWait){
-        if(forwardRequestMustWait){
-            BaseResponse<HerculesRunnableTaskInfo> resp =  managerApi.submitOnceTask(forwardRequest);
-            if(!Objects.equals(200,resp.getCode())){
-                throw new RuntimeException("Chain call failed!"+resp.getMsg());
-            }
-        }else{
-            try {
-                BaseResponse<HerculesRunnableTaskInfo> resp =  managerApi.submitOnceTask(forwardRequest);
-                if(resp.getCode()!=200){
-                    log.warn("Chain call failed!"+resp.getMsg());
-                }
-            }catch (Exception e){
-                log.error("Chain call encountered an issue!",e);
-            }
-        }
-    }
-
-    private void process(DataSource duckDbDataSource,HerculesRunnableTaskInfo taskInfo,Map<String, TaskPlugin> pluginMap){
-        if(processInfoCache.add(taskInfo.getId())){
-            if(pluginMap.get(taskInfo.getPluginHandle())!=null){
-                log.info("Starting to process the task,id[{}],businessKey[{}]",taskInfo.getId(),taskInfo.getExecutorRegion());
-                try(TaskExecutionContext taskExecutionContext = new TaskExecutionContext()){
-                    taskExecutionContext.setId(taskInfo.getId());
-                    taskExecutionContext.setExecutionContext(taskInfo.getContext());
-                    Integer maxRetryTimes = taskInfo.getMaxRetryTimes();
-                    if(maxRetryTimes==null){
-                        maxRetryTimes = 3;
-                    }
-                    for(int i=0;i<maxRetryTimes;i++){
-                        try{
-                            if(runnerEnv.isEnableDuckdb()){
-                                processWithDuckdb(duckDbDataSource,taskExecutionContext,taskInfo,pluginMap);
-                            }else{
-                                processWithoutDuckdb(taskExecutionContext,taskInfo,pluginMap);
-                            }
-                            if(taskExecutionContext.getForwardRequest()!=null){
-                                for (HerculesRunnableTaskInfo request : taskExecutionContext.getForwardRequest()) {
-                                    tryForward(request,taskExecutionContext.isForwardRequestMustWait());
-                                }
-                            }
-                            break;
-                        }catch (Exception e){
-                            log.error("Task execution failed, retry count [{}]",i);
-                            log.error(e.getMessage(),e);
-                            TimeUnit.SECONDS.sleep(1);
-                            if(i==maxRetryTimes-1){
-                                throw e;
-                            }
-                        }
-                    }
-                }catch (Exception e){
-                    log.error("Task execution failed, Task ID[{}]",taskInfo.getId(),e);
-                    if(StringUtils.isNotBlank(taskInfo.getAsyncRecoverContext()) && !"{}".equals(taskInfo.getAsyncRecoverContext().trim())){
-                        BaseResponse<PluginResourceInfo> response = managerApi.asyncRerunOneTask(new AsyncRetryOneTaskRequestVO()
-                                .setTaskId(taskInfo.getId())
-                                .setErrorMessage(Objects.toString(e.getMessage()).substring(0,500)));
-                        if(response.getCode()!= EnumResponseType.SUCCESS.getCode()){
-                            log.error("Asynchronous retry failed! Task ID [{}], Error message [{}]",taskInfo.getId(),response.getMsg());
-                        }
-                    }
-                    failed(taskInfo);
-                }finally {
-                    processInfoCache.remove(taskInfo.getId());
-                }
-            }else{
-                try {
-                    abandon(taskInfo);
-                } finally {
-                    processInfoCache.remove(taskInfo.getId());
-                }
-            }
-        }else{
-            if(pluginMap.get(taskInfo.getPluginHandle())==null){
-                log.warn("Task [{}] cannot find plugin information, skipping this process. Attempting to call plugin [{}], current available plugin list [{}]",taskInfo.getId(),taskInfo.getPluginHandle(),pluginMap.keySet());
-            }else{
-                log.warn("Task [{}] is currently being processed by another executor, skipping this round of processing.",taskInfo.getId());
-            }
-        }
-    }
-
-    private void processWithoutDuckdb(TaskExecutionContext taskExecutionContext,
-                                      HerculesRunnableTaskInfo taskInfo,
-                                      Map<String, TaskPlugin> pluginMap) throws Exception {
-        TaskPlugin plugin = pluginMap.get(taskInfo.getPluginHandle());
-        if(plugin==null){
-            log.warn("The plugin corresponding to [{}] was not retrieved!",taskInfo.getPluginHandle());
-            abandon(taskInfo);
-        }else{
-            plugin.execute(taskExecutionContext);
-            success(taskExecutionContext);
-        }
-    }
-
-    private void processWithDuckdb(DataSource duckDbDataSource,
-                                   TaskExecutionContext taskExecutionContext,
-                                   HerculesRunnableTaskInfo taskInfo,
-                                   Map<String, TaskPlugin> pluginMap) throws Exception {
-        Connection duckdbConnection = null;
         try{
-            duckdbConnection = duckDbDataSource.getConnection();
-            taskExecutionContext.setDuckdbConnection(duckdbConnection);
-            TaskPlugin plugin = pluginMap.get(taskInfo.getPluginHandle());
-            if(plugin==null){
-                log.warn("The plugin corresponding to [{}] was not retrieved!",taskInfo.getPluginHandle());
-                abandon(taskInfo);
-                return;
+            rebuildDuckdb();
+            Integer maxRetryTimes = taskInfo.getMaxRetryTimes();
+            if(maxRetryTimes==null){
+                maxRetryTimes = 3;
+                taskInfo.setMaxRetryTimes(maxRetryTimes);
             }
-            plugin.execute(taskExecutionContext);
-            success(taskExecutionContext);
-            taskExecutionContext.setDuckdbConnection(null);
-        } finally {
-            if(duckdbConnection!=null && !duckdbConnection.isClosed()){
-                try{
-                    duckdbConnection.close();
-                    taskExecutionContext.setDuckdbConnection(null);
-                }catch(Exception e){
-                    // The JNI of duckdb is not necessarily stable. So do not use try-with-resource.
-                    log.error("DuckDB close failed, rebuilding", e);
-                    //todo: Doing this will cause other tasks submitted in parallel
-                    // (which have already obtained references to the old dataSource) to fail.
-                    // Perhaps the dataSource should not be passed in the method.
-                    // But let's leave it as is for now and deal with it later.
-                    rebuildDuckdbDataSource();
+            Map<String, TaskPlugin> pluginMap = taskPluginContext.getLatestPluginMap(taskInfo.getPluginGroup());
+            TaskPlugin plugin = pluginMap.get(taskInfo.getPluginHandle());
+            if(plugin!=null && queueCapacity()>0){
+                executor.execute(()->process(plugin,taskInfo));
+            } else {
+                String tooBusyLogMsg = StrFormat.format("The executor is busy and cannot process new tasks. Task ID[{}]",taskInfo.getId());
+                String pluginNotFoundMsg = StrFormat.format("Plugin[{}] not found and cannot process new tasks. Task ID[{}]",taskInfo.getPluginHandle(),taskInfo.getId());
+                String msg = plugin==null?pluginNotFoundMsg:tooBusyLogMsg;
+                log.warn(msg);
+                tryDomain(maxRetryTimes,()->abandon(taskInfo),ExecutorTaskOps.ABANDON);
+            }
+        } catch (Exception e){
+            log.error("Task execution failed,try abandon this task,taskId=[{}]",taskInfo.getId(),e);
+            abandon(taskInfo);
+        }
+    }
+
+    private void rebuildDuckdb() {
+        if(runnerEnv.isEnableDuckdb() && System.currentTimeMillis()>duckdbConnectionTTL && aliveAbleSlot()==totalSlot()){
+            rebuildDuckdbDataSource();
+        }
+    }
+
+    private void tryForward(HerculesRunnableTaskInfo forwardRequest, Set<String> forwardInfoCache){
+        BaseResponse<HerculesRunnableTaskInfo> resp =  managerApi.submitOnceTask(forwardRequest);
+        if(!Objects.equals(200,resp.getCode())){
+            throw new RuntimeException("Chain call failed!"+resp.getMsg());
+        }
+        forwardInfoCache.add(forwardRequest.getId());
+    }
+
+    private <E> E tryDomain(int maxRetryTimes, Callable<E> task,ExecutorTaskOps taskDomain) throws Exception {
+        Exception lastException = new RuntimeException();
+        for(int i=0;i<maxRetryTimes;i++){
+            try{
+                return task.call();
+            }catch (Exception e){
+                lastException = e;
+                log.error("Task execution failed,domain=[{}], retry count [{}]",taskDomain,i);
+                log.error(e.getMessage(),e);
+                if(i==maxRetryTimes-1){
+                    throw e;
                 }
+                TimeUnit.SECONDS.sleep(1);
+            }
+        }
+        throw lastException;
+    }
+
+    private TaskExecutionContext buildTaskExecutionContext(HerculesRunnableTaskInfo taskInfo) throws Exception {
+        TaskExecutionContext taskExecutionContext = new TaskExecutionContext();
+        if(runnerEnv.isEnableDuckdb()){
+            Connection duckdbConnection = dataSource.getConnection();
+            taskExecutionContext.setDuckdbConnection(duckdbConnection);
+        }
+        taskExecutionContext.setId(taskInfo.getId());
+        taskExecutionContext.setExecutionContext(taskInfo.getContext());
+        return taskExecutionContext;
+    }
+
+    private void process(TaskPlugin plugin,HerculesRunnableTaskInfo taskInfo) {
+        boolean processSuccess = false;
+        TaskExecutionContext taskExecutionContext = null;
+        int maxRetryTimes = taskInfo.getMaxRetryTimes();
+        try{
+            taskExecutionContext = buildTaskExecutionContext(taskInfo);
+            TaskExecutionContext finalTaskExecutionContext = taskExecutionContext;
+            processSuccess = tryDomain(maxRetryTimes,()-> executePlugin(finalTaskExecutionContext,taskInfo,plugin),ExecutorTaskOps.PROCESS);
+            Set<String> forwardInfoCache = new HashSet<>();
+            if(taskExecutionContext.getForwardRequest()!=null && !taskExecutionContext.getForwardRequest().isEmpty()){
+                tryDomain(maxRetryTimes,()->tryForwardTask(finalTaskExecutionContext,forwardInfoCache),ExecutorTaskOps.FORWARD);
+            }
+            tryDomain(maxRetryTimes,()->success(finalTaskExecutionContext),ExecutorTaskOps.FINISH);
+        }catch(Exception e){
+            log.error("Task execution failed, taskId [{}]",taskInfo.getId(),e);
+            if(!processSuccess){
+                // try one last time.
+                try {
+                    tryDomain(maxRetryTimes,()->failed(taskInfo),ExecutorTaskOps.FAIL);
+                    tryAsyncRecover(taskInfo, e);
+                }catch(Exception ex) {
+                    log.error("Can not report task status.Task is Dead,TaskId [{}]",taskInfo.getId(),ex);
+                }
+            }else{
+                log.error("Task executed but can not report info into managerApi.Task is Dead,TaskId [{}]",taskInfo.getId(),e);
+            }
+        }finally {
+            if(runnerEnv.isEnableDuckdb() && taskExecutionContext!=null){
+                cleanUpDuckdbConnection(taskExecutionContext);
+            }
+            IOUtils.closeQuietly(taskExecutionContext);
+        }
+    }
+
+    private boolean tryForwardTask(TaskExecutionContext taskExecutionContext,Set<String> forwardInfoCache) {
+        if(taskExecutionContext!=null && taskExecutionContext.getForwardRequest()!=null){
+            for (HerculesRunnableTaskInfo request : taskExecutionContext.getForwardRequest()) {
+                if(StringUtils.isBlank(request.getFromSourceId())){
+                    request.setFromSourceId(taskExecutionContext.getId());
+                }
+                if(request.getFromType() == null){
+                    request.setFromType(TaskType.FORWARD);
+                }
+                if(request.getId()==null){
+                    request.setId(request.buildDefaultUniId());
+                }
+                if(!forwardInfoCache.contains(request.getId())){
+                    tryForward(request, forwardInfoCache);
+                }
+            }
+        }
+        return true;
+    }
+
+    private void tryAsyncRecover(HerculesRunnableTaskInfo taskInfo, Exception e) {
+        if(StringUtils.isNotBlank(taskInfo.getAsyncRecoverContext()) && !"{}".equals(taskInfo.getAsyncRecoverContext().trim())){
+            BaseResponse<PluginResourceInfo> response = managerApi.asyncRerunOneTask(new AsyncRetryOneTaskRequestVO()
+                    .setTaskId(taskInfo.getId())
+                    .setErrorMessage(Objects.toString(e.getMessage()).substring(0,500)));
+            if(response.getCode()!= EnumResponseType.SUCCESS.getCode()){
+                log.error("Asynchronous retry failed! Task ID [{}], Error message [{}]", taskInfo.getId(),response.getMsg());
             }
         }
     }
 
-    private void abandon(HerculesRunnableTaskInfo taskInfo) {
+    private boolean executePlugin(TaskExecutionContext taskExecutionContext,
+                               HerculesRunnableTaskInfo taskInfo,
+                               TaskPlugin plugin) throws Exception {
+        try{
+            plugin.execute(taskExecutionContext);
+            return true;
+        } catch (Exception e) {
+            log.error("Task execution failed, Plugin ID[{}]",taskInfo.getId(),e);
+            throw e;
+        }
+    }
+
+    private void cleanUpDuckdbConnection(TaskExecutionContext taskExecutionContext) {
+        try{
+            Connection duckdbConnection = taskExecutionContext.getDuckdbConnection();
+            taskExecutionContext.setDuckdbConnection(null);
+            if(duckdbConnection!=null && !duckdbConnection.isClosed()){
+                duckdbConnection.close();
+            }
+        }catch(Exception e){
+            // The JNI of duckdb is not necessarily stable. So do not use try-with-resource.
+            log.error("DuckDB close failed, rebuilding", e);
+            rebuildDuckdbDataSource();
+        }
+    }
+
+    private boolean abandon(HerculesRunnableTaskInfo taskInfo) {
+        HerculesRunnableTaskInfo oldInfo =  searchTask(taskInfo.getId());
+        if(oldInfo==null){
+            throw new IllegalArgumentException("Task ["+taskInfo.getId()+"] is not found!");
+        }
+        if(TaskStatus.INIT.name().equals(oldInfo.getStatus())){
+            return true;
+        }
         BaseResponse<Boolean> result = managerApi.abandonOneTask(
                 taskInfo.getId(),
                 runnerEnv.getRunnerInstanceId(),
@@ -377,9 +385,17 @@ public class ExecutorProcessHandleImpl implements ExecutorProcessHandle, Closeab
         if(result.getCode()!=200 || !Boolean.TRUE.equals(result.getData())){
             throw new RuntimeException(result.getMsg());
         }
+        return true;
     }
 
-    private void failed(HerculesRunnableTaskInfo taskInfo) {
+    private boolean failed(HerculesRunnableTaskInfo taskInfo) {
+        HerculesRunnableTaskInfo oldInfo =  searchTask(taskInfo.getId());
+        if(oldInfo==null){
+            throw new IllegalArgumentException("Task ["+taskInfo.getId()+"] is not found!");
+        }
+        if(TaskStatus.FAILED.name().equals(oldInfo.getStatus())){
+            return true;
+        }
         BaseResponse<Boolean> result = managerApi.failOneTask(
                 taskInfo.getId(),
                 runnerEnv.getRunnerInstanceId(),
@@ -387,9 +403,25 @@ public class ExecutorProcessHandleImpl implements ExecutorProcessHandle, Closeab
         if(result.getCode()!=200 || !Boolean.TRUE.equals(result.getData())){
             throw new RuntimeException(result.getMsg());
         }
+        return true;
     }
 
-    private void success(TaskExecutionContext taskExecutionContext) {
+    private HerculesRunnableTaskInfo searchTask(String taskId){
+        BaseResponse<HerculesRunnableTaskInfo> result = managerApi.checkTaskStatus(taskId);
+        if(result.getCode()!=200){
+            throw new RuntimeException(result.getMsg());
+        }
+        return result.getData();
+    }
+
+    private boolean success(TaskExecutionContext taskExecutionContext) {
+        HerculesRunnableTaskInfo taskInfo =  searchTask(taskExecutionContext.getId());
+        if(taskInfo==null){
+            throw new IllegalArgumentException("Task ["+taskExecutionContext.getId()+"] is not found!");
+        }
+        if(TaskStatus.SUCCESS.name().equals(taskInfo.getStatus())){
+            return true;
+        }
         BaseResponse<Boolean> result = managerApi.finishOneTask(new FinishOneTaskRequestVO()
                 .setTaskId(taskExecutionContext.getId())
                 .setCheckPointInfo(taskExecutionContext.getCheckPointResult())
@@ -397,8 +429,10 @@ public class ExecutorProcessHandleImpl implements ExecutorProcessHandle, Closeab
                 .setPassSign(ExecutorInfoUtils.getExecutorSign(runnerEnv.getRunnerIdentityId(),taskExecutionContext.getId(), ExecutorTaskOps.FINISH))
         );
         if(result.getCode()!=200 || !Boolean.TRUE.equals(result.getData())){
-            throw new RuntimeException(result.getMsg());
+            String msg = StrFormat.format("Can not set task status to success,error msg = [{}],current task status = [{}],task id = [{}]",result.getMsg(),taskInfo.getStatus(),taskInfo.getId());
+            throw new RuntimeException(msg);
         }
+        return true;
     }
 
     @Override

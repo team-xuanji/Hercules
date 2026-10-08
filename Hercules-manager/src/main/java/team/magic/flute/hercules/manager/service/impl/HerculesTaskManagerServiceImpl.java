@@ -1,7 +1,9 @@
 package team.magic.flute.hercules.manager.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import team.magic.flute.hercules.common.http.BaseResponse;
 import team.magic.flute.hercules.common.http.HerculesRunnableTaskInfo;
@@ -26,6 +28,7 @@ import java.util.Collections;
 import java.util.List;
 
 @Service
+@Slf4j
 public class HerculesTaskManagerServiceImpl implements HerculesTaskManagerService {
     @Autowired
     private HerculesExecutorTasksService executorTasksService;
@@ -52,7 +55,11 @@ public class HerculesTaskManagerServiceImpl implements HerculesTaskManagerServic
         if(executorInfoService.getAllAvailableExecutorRegion().contains(executorRegion)){
             Collection<String> whiteList = executorInfoService.getPluginHandleWhiteListByExecutorRegion(taskInfo.getExecutorRegion());
             if(whiteList == null || whiteList.isEmpty() || whiteList.contains(taskInfo.getPluginHandle())){
-                executorTasksService.save(taskInfo);
+                try{
+                    executorTasksService.save(taskInfo);
+                }catch(DuplicateKeyException ex){
+                    log.warn(ex.getMessage(),ex);
+                }
                 HerculesTaskInfo info = executorTasksService.getById(taskInfo.getId());
                 return BaseResponse.success(DTOConvertUtils.parse2RunnableTaskInfo(info,true,runnerEnv.getHttpEncryptKey(), AESUtils.generateIV()));
             }else{

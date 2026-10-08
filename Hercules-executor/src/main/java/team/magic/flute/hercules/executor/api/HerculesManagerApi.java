@@ -47,6 +47,12 @@ public interface HerculesManagerApi {
             ExecutorInfoReportRequestVO requestVO
     );
 
+    @RequestLine("GET /taskManager/checkTaskStatus?taskId={taskId}")
+    @Headers("Content-Type: application/json;charset=UTF-8")
+    BaseResponse<HerculesRunnableTaskInfo> checkTaskStatus(
+            @Param("taskId")String taskId
+    );
+
     /**
      * Fetch runnable tasks over the binary channel: the response is a
      * Fory-serialized {@link TaskFetchResult} (optionally compressed and/or

@@ -14,8 +14,8 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class TaskPluginContext {
-    private final Map<String,Map<String,TaskPluginContextDetail>> taskPluginContextDetailMap = new ConcurrentHashMap<>();
-    private final Map<String,String> pluginGroupLatestVersion = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String,ConcurrentHashMap<String,TaskPluginContextDetail>> taskPluginContextDetailMap = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String,String> pluginGroupLatestVersion = new ConcurrentHashMap<>();
     private static final int MAX_KEEP_VERSIONS = 3;
 
     public Set<String> getPluginGroups() {
@@ -36,13 +36,13 @@ public class TaskPluginContext {
                 .setPlugins(taskPluginMap)
                 .setPublishTime(LocalDateTime.now());
 
-        taskPluginContextDetailMap.computeIfAbsent(pluginGroup, (key)->new HashMap<>())
+        taskPluginContextDetailMap.computeIfAbsent(pluginGroup, (key)->new ConcurrentHashMap<>())
                 .putIfAbsent(pluginVersion, taskPluginContextDetail);
         pluginGroupLatestVersion.put(pluginGroup, pluginVersion);
     }
 
     public Map<String, TaskPlugin> getPluginMapByVersion(String pluginGroup,String pluginVersion) {
-        return Optional.ofNullable(taskPluginContextDetailMap.getOrDefault(pluginGroup,new HashMap<>())
+        return Optional.ofNullable(taskPluginContextDetailMap.getOrDefault(pluginGroup,new ConcurrentHashMap<>())
                         .getOrDefault(pluginVersion,new TaskPluginContextDetail())
                         .getPlugins())
                 .orElse(new HashMap<>());
@@ -67,7 +67,7 @@ public class TaskPluginContext {
             return;
         }
         Map<String,TaskPluginContextDetail> allVersionInfo = Optional.ofNullable(taskPluginContextDetailMap.get(pluginGroup))
-                .orElse(new HashMap<>());
+                .orElse(new ConcurrentHashMap<>());
         Set<String> tryDeleteVersions = allVersionInfo.keySet().stream().filter(key -> !key.equals(latestVersion)).collect(Collectors.toSet());
 
         List<TaskPluginContextDetail> closedVersions = allVersionInfo.values().stream()

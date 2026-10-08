@@ -4,6 +4,7 @@ public enum TaskType {
     FROM_CRON,
     ONCE,
     ASYNC_RECOVER,
+    FORWARD,
     /**
      * Maybe not useful
      */

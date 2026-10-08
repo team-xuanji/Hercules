@@ -130,16 +130,33 @@ public class TaskExecutionContext implements Closeable {
     private Collection<HerculesRunnableTaskInfo> forwardRequest;
 
     /**
-     * Whether to wait for chain task completion.
+     * Legacy switch for chain-task <em>submission strictness</em>. Deprecated.
      *
-     * <p>Controls the execution behavior for chain tasks:
+     * <p><b>Actual semantics</b> — despite the name, the flag never made the
+     * parent wait for child completion. Both values only submit the forwards
+     * to the manager; they differ in error propagation when a submission
+     * fails:
      * <ul>
-     *   <li>{@code false} (default): Chain tasks execute asynchronously and don't affect
-     *       the current task's success/failure status</li>
-     *   <li>{@code true}: The current task will only be considered successful if all
-     *       chain tasks also complete successfully</li>
+     *   <li>{@code true}: the failure fails the parent task, which retries
+     *       and resubmits the chain (safe to retry once forwards carry
+     *       deterministic ids — see the chain semantics ADR)</li>
+     *   <li>{@code false} (default): the failure is logged and swallowed; the
+     *       parent completes and the chain may silently lose steps</li>
      * </ul>
+     *
+     * <p><b>Why "wait for completion" was abandoned</b> — the original
+     * intent (parent blocks until children finish) was rejected because it
+     * holds executor slots for the whole chain, deadlocks under chained
+     * derivation (A→B→C exhausts every slot), and requires polling child
+     * status. Full reasoning: ADR-0011.
+     *
+     * <p><b>Planned replacement</b> — chain progress via short-lived check
+     * tasks: each check task verifies the previous step, forwards the next
+     * one if warranted, and exits immediately, so no slot is held across the
+     * chain. This flag will be removed once that mechanism lands; do not use
+     * it in new plugins.
      */
+    @Deprecated
     private boolean forwardRequestMustWait=false;
 
     /**
@@ -171,7 +188,7 @@ public class TaskExecutionContext implements Closeable {
                     }
                 }
             }
-        }catch (Exception e){
+        } catch (Exception e){
             throw new IOException(e);
         }
     }
