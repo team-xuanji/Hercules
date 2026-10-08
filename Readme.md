@@ -22,6 +22,20 @@
 
 Hercules takes its name from the hero of twelve impossible labors — not because this engine is big, but because a loosely-coupled plugin architecture lets one small system play many roles. Its architecture philosophy, however, is the exact opposite of its name: **if it can be avoided, it is not added.**
 
+### How We Got Here
+
+We didn't set out to build a "poor man's" scheduler. The first design was the textbook enterprise stack: an MQ for dispatch, Redis for locks and leader election, ZooKeeper for coordination, and a service-discovery layer to tie it together. It worked beautifully — in our own data center.
+
+Then we tried to ship it. Real deployment targets spanned multiple clouds and organizational boundaries — public clouds, private clouds, customer intranets, cross-department network zones. Each boundary had its own rules: some permitted only outbound HTTP, some mandated reusing whatever MySQL was already there and nothing more, and none of them could share a middleware cluster across the line. Every boundary we crossed shrank the feasible solution space, and what survived the intersection of all of them was almost nothing: an existing MySQL, and plain HTTP. The footprint wasn't a preference — it was the feasibility envelope.
+
+So we went component by component and asked what each one was *actually for*. The MQ gave at-least-once delivery — a conditional UPDATE plus a reaper gives that. Redis's lock gave mutual exclusion — the same row's compare-and-swap gives that. The registry gave liveness — a heartbeat row and oldest-wins gives that. Each middleware was a general solution rented for one specific problem, and MySQL could be *that* specific solution. And where only outbound HTTP survives, a push channel doesn't exist at all — pull-based dispatch was not a stylistic choice but the only passage left.
+
+Every removal felt like relief, not sacrifice: fewer partition scenarios to reason about, one log to read when things break, no upgrade matrix. And the discipline that middleware used to enforce moved into the code — as explicit invariants instead of implicit assumptions (see the ADRs).
+
+Meanwhile the requirements kept coming, from more and more teams — including semi-technical users who wanted to publish logic of their own. Had the core absorbed all of that, it would have re-bloated into exactly the system we had just escaped. So variability moved outward: glue plugins, classloader isolation, lazy download, version rotation. **The core shrank; the ecosystem grew.**
+
+So "poverty-driven" describes where we landed, not where we started. The real driver was constraint-first design — and the constraint turned out to be an asset. Every ADR in `docs/adr` records one deliberate trade-off, not a compromise.
+
 The whole system rests on one humble premise — you already have a MySQL. From that premise, we built:
 
 - **Locks out of the database**: a conditional UPDATE *is* a distributed lock; MySQL's atomicity *is* the mutual exclusion.

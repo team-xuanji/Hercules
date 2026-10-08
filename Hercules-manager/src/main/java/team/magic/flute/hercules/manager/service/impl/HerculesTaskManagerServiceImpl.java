@@ -47,13 +47,13 @@ public class HerculesTaskManagerServiceImpl implements HerculesTaskManagerServic
 
     @Override
     public BaseResponse<HerculesRunnableTaskInfo> submitOnceTask(HerculesRunnableTaskInfo submitTaskRequest) {
-        int chainDepth = resolveChainDepth(submitTaskRequest);
+        long chainDepth = resolveChainDepth(submitTaskRequest);
         if(chainDepth > runnerEnv.getMaxChainDepth()){
             return BaseResponse.fail(StrFormat.format(
                     "Chain depth limit exceeded: this forward would reach depth [{}], max allowed is [{}], parent task [{}]. Submission rejected to stop runaway chain derivation.",
                     chainDepth, runnerEnv.getMaxChainDepth(), submitTaskRequest.getFromSourceId()));
         }
-        HerculesTaskInfo taskInfo = DTOConvertUtils.parse2TaskInfo(submitTaskRequest,runnerEnv.getHttpEncryptKey(),chainDepth);
+        HerculesTaskInfo taskInfo = DTOConvertUtils.parse2TaskInfo(submitTaskRequest,runnerEnv.getHttpEncryptKey(),(int)chainDepth);
         String pluginGroup = submitTaskRequest.getPluginGroup();
         String pluginHandle = submitTaskRequest.getPluginHandle();
         String executorRegion = submitTaskRequest.getExecutorRegion();
@@ -84,8 +84,13 @@ public class HerculesTaskManagerServiceImpl implements HerculesTaskManagerServic
      * FORWARD tasks, 0 otherwise. Depth is always derived here — never taken
      * from the request body — so a forged depth cannot bypass the limit.
      * A FORWARD task whose parent is missing still counts as one hop.
+     *
+     * <p>Returns long: a parent row poisoned to Integer.MAX_VALUE (manual DB edit,
+     * bad migration) must not overflow the +1 back into negative and slip past
+     * the limit. A negative parent depth is likewise corrupt — report a depth
+     * beyond the limit so the submission is rejected instead of propagating it.
      */
-    private int resolveChainDepth(HerculesRunnableTaskInfo request){
+    private long resolveChainDepth(HerculesRunnableTaskInfo request){
         if(!FORWARD.equals(request.getFromType()) || StringUtils.isBlank(request.getFromSourceId())){
             return 0;
         }
@@ -93,7 +98,11 @@ public class HerculesTaskManagerServiceImpl implements HerculesTaskManagerServic
         if(parent==null){
             return 1;
         }
-        return (parent.getChainDepth()!=null?parent.getChainDepth():0)+1;
+        int parentDepth = parent.getChainDepth()!=null?parent.getChainDepth():0;
+        if(parentDepth < 0){
+            return (long) runnerEnv.getMaxChainDepth() + 1;
+        }
+        return (long) parentDepth + 1;
     }
 
     @Override
