@@ -2,6 +2,7 @@ package team.magic.flute.hercules.manager.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -9,6 +10,7 @@ import team.magic.flute.hercules.common.http.BaseResponse;
 import team.magic.flute.hercules.common.http.HerculesRunnableTaskInfo;
 import team.magic.flute.hercules.common.plugin.PluginResourceInfo;
 import team.magic.flute.hercules.common.status.TaskStatus;
+import team.magic.flute.hercules.common.status.TaskType;
 import team.magic.flute.hercules.common.util.AESUtils;
 import team.magic.flute.hercules.common.util.StrFormat;
 import team.magic.flute.hercules.manager.config.RecoverConfig;
@@ -25,6 +27,8 @@ import team.magic.flute.hercules.manager.vo.HerculesRecoverTaskInfoVO;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+
+import static team.magic.flute.hercules.common.status.TaskType.FORWARD;
 
 @Service
 @Slf4j
@@ -43,7 +47,13 @@ public class HerculesTaskManagerServiceImpl implements HerculesTaskManagerServic
 
     @Override
     public BaseResponse<HerculesRunnableTaskInfo> submitOnceTask(HerculesRunnableTaskInfo submitTaskRequest) {
-        HerculesTaskInfo taskInfo = DTOConvertUtils.parse2TaskInfo(submitTaskRequest,runnerEnv.getHttpEncryptKey());
+        int chainDepth = resolveChainDepth(submitTaskRequest);
+        if(chainDepth > runnerEnv.getMaxChainDepth()){
+            return BaseResponse.fail(StrFormat.format(
+                    "Chain depth limit exceeded: this forward would reach depth [{}], max allowed is [{}], parent task [{}]. Submission rejected to stop runaway chain derivation.",
+                    chainDepth, runnerEnv.getMaxChainDepth(), submitTaskRequest.getFromSourceId()));
+        }
+        HerculesTaskInfo taskInfo = DTOConvertUtils.parse2TaskInfo(submitTaskRequest,runnerEnv.getHttpEncryptKey(),chainDepth);
         String pluginGroup = submitTaskRequest.getPluginGroup();
         String pluginHandle = submitTaskRequest.getPluginHandle();
         String executorRegion = submitTaskRequest.getExecutorRegion();
@@ -67,6 +77,23 @@ public class HerculesTaskManagerServiceImpl implements HerculesTaskManagerServic
         }else{
             return BaseResponse.fail("No executor is available to handle this business scenario["+taskInfo.getExecutorRegion()+"]");
         }
+    }
+
+    /**
+     * Derive the forward-chain depth for a submission: parent depth + 1 for
+     * FORWARD tasks, 0 otherwise. Depth is always derived here — never taken
+     * from the request body — so a forged depth cannot bypass the limit.
+     * A FORWARD task whose parent is missing still counts as one hop.
+     */
+    private int resolveChainDepth(HerculesRunnableTaskInfo request){
+        if(!FORWARD.equals(request.getFromType()) || StringUtils.isBlank(request.getFromSourceId())){
+            return 0;
+        }
+        HerculesTaskInfo parent = executorTasksService.getById(request.getFromSourceId());
+        if(parent==null){
+            return 1;
+        }
+        return (parent.getChainDepth()!=null?parent.getChainDepth():0)+1;
     }
 
     @Override

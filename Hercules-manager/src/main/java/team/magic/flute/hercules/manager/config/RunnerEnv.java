@@ -14,6 +14,8 @@ public class RunnerEnv implements EnvironmentAware {
     private String runnerId;
     @Value("${hercules.security.http-encrypt-key}")
     private String httpEncryptKey;
+    @Value("${hercules.task.max-chain-depth:32}")
+    private int maxChainDepth;
     @Override
     public void setEnvironment(Environment environment) {
         runnerId = GUID.v7().toString().replace("-","");

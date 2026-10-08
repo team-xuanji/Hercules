@@ -33,6 +33,7 @@ public class DTOConvertUtils {
                 .setMaxRetryTimes(taskInfo.getMaxRetryTimes())
                 .setAsyncRecoverContext(taskInfo.getAsyncRecoverContext()!=null? JacksonUtils.writeValueAsString(taskInfo.getAsyncRecoverContext()) :"")
                 .setFromSourceId(taskInfo.getSourceId())
+                .setChainDepth(taskInfo.getChainDepth())
                 .setFromType(TaskType.valueOf(taskInfo.getFromType()));
     }
 
@@ -47,8 +48,10 @@ public class DTOConvertUtils {
      * @param request the submission request; {@code id} may be blank to auto-generate,
      *                and {@code fromType} may be null to default to {@link TaskType#ONCE}
      * @param aesKey  channel key used to decrypt {@code context} when {@code encryptIV} is present
+     * @param chainDepth forward-chain depth derived by the caller from the parent task
+     *                   (0 for non-chain tasks); never trusted from the request body
      */
-    public static HerculesTaskInfo parse2TaskInfo(HerculesRunnableTaskInfo request, String aesKey){
+    public static HerculesTaskInfo parse2TaskInfo(HerculesRunnableTaskInfo request, String aesKey, int chainDepth){
         RecoverStrategy recoverStrategy = null;
         if(StringUtils.isNotBlank(request.getAsyncRecoverContext()) && !"{}".equals(request.getAsyncRecoverContext().trim())){
             recoverStrategy = JacksonUtils.readValue(request.getAsyncRecoverContext(),RecoverStrategy.class);
@@ -59,11 +62,21 @@ public class DTOConvertUtils {
         }
         int bucketId = RandomUtils.nextInt(1,TASK_MAX_BUCKET_SIZE);
         if(StringUtils.isNotBlank(request.getHashKey())){
-            bucketId = (Math.abs(request.getHashKey().hashCode())%TASK_MAX_BUCKET_SIZE)+1;
+            /*
+             * floorMod, not Math.abs(hashCode()): Integer.MIN_VALUE's absolute
+             * value is itself, which would push bucketId out of range.
+             * floorMod always yields 0..TASK_MAX_BUCKET_SIZE-1 for a positive modulus.
+             * */
+            bucketId = Math.floorMod(request.getHashKey().hashCode(),TASK_MAX_BUCKET_SIZE)+1;
         }
         TaskType fromType = request.getFromType()!=null?request.getFromType():ONCE;
         return new HerculesTaskInfo()
-                .setId(request.getId()!=null?request.getId():GUID.v7().toString().replace("-",""))
+                /*
+                 * Blank id (empty string) must fall through to auto-generation:
+                 * persisting "" as a task id would collide across submissions and,
+                 * worse, the idempotent-replay path would return the wrong task.
+                 * */
+                .setId(StringUtils.isNotBlank(request.getId())?request.getId():GUID.v7().toString().replace("-",""))
                 .setExecutorRegion(request.getExecutorRegion())
                 .setDesc(request.getDesc())
                 .setPluginGroup(request.getPluginGroup())
@@ -72,6 +85,7 @@ public class DTOConvertUtils {
                 .setContext(finalContext)
                 .setEnable(true)
                 .setSourceId(request.getFromSourceId())
+                .setChainDepth(chainDepth)
                 .setBucketId(bucketId)
                 .setStatus(TaskStatus.INIT.name())
                 .setAsyncRecoverContext(recoverStrategy)

@@ -38,6 +38,8 @@ public class HerculesTaskInfo {
     private String fromType;
     @TableField(value = "SOURCE_ID")
     private String sourceId;
+    @TableField(value = "CHAIN_DEPTH")
+    private Integer chainDepth;
     @TableField(value = "CONTEXT")
     private String context;
     @TableField(value = "CHECK_POINT_INFO")

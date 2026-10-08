@@ -62,4 +62,10 @@ hercules:
   security:
     # AES GCM 256,Replace this KEY with the actual KEY in use
     http-encrypt-key: "xxxxxxxx="
+  task:
+    # Maximum forward-chain depth. Forward submissions that would exceed this
+    # depth are rejected (failing the parent task), bounding runaway chain
+    # derivation such as a plugin that keeps forwarding to itself.
+    # Raise it for legitimately deep pipelines (e.g. segmented resident tasks).
+    max-chain-depth: 32
 

@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS `HERCULES_TASK_INFO` (
    `DESCRIPTION` text COMMENT 'Description',
    `FROM_TYPE` varchar(50) DEFAULT NULL COMMENT 'Source type',
    `SOURCE_ID` varchar(128) DEFAULT NULL COMMENT 'Source ID',
+   `CHAIN_DEPTH` int DEFAULT '0' COMMENT 'Forward chain depth (0 = not a chain task)',
    `CONTEXT` text COMMENT 'Context',
    `ASYNC_RECOVER_CONTEXT` text COMMENT 'Async recovery context',
    `CHECK_POINT_INFO` text COMMENT 'Checkpoint information',

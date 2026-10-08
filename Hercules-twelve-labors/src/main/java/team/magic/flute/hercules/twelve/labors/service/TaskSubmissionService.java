@@ -7,8 +7,7 @@ import team.magic.flute.hercules.common.util.JacksonUtils;
 import team.magic.flute.hercules.twelve.labors.api.HerculesManagerApi;
 import team.magic.flute.hercules.twelve.labors.business.export.entity.RdsExportContext;
 import team.magic.flute.hercules.twelve.labors.business.export.entity.RdsInfo;
-import team.magic.flute.hercules.twelve.labors.business.inner.HerculesTaskInfo;
-import team.magic.flute.hercules.twelve.labors.business.inner.SubmitOnceTypeTaskRequestVO;
+import team.magic.flute.hercules.common.http.HerculesRunnableTaskInfo;
 import team.magic.flute.hercules.twelve.labors.constant.CmsDownloadFormat;
 import team.magic.flute.hercules.twelve.labors.dao.entity.CmsDataDownloadTaskDefPO;
 import team.magic.flute.hercules.twelve.labors.dao.entity.CmsDataDownloadTaskPO;
@@ -176,8 +175,8 @@ public class TaskSubmissionService {
             throw new RuntimeException("Failed to save task");
         }
 
-        // 7. Build SubmitOnceTypeTaskRequestVO
-        SubmitOnceTypeTaskRequestVO submitRequest = new SubmitOnceTypeTaskRequestVO()
+        // 7. Build the submission request (shared wire type with the manager)
+        HerculesRunnableTaskInfo submitRequest = new HerculesRunnableTaskInfo()
                 .setId(String.valueOf(taskPO.getTaskId()))
                 .setExecutorRegion(taskDef.getExecutorRegion())
                 .setDesc("CMS data download task: " + request.getBusinessKey())
@@ -192,11 +191,11 @@ public class TaskSubmissionService {
         }
         
         // 8. Call HerculesManagerApi to submit task
-        BaseResponse<HerculesTaskInfo> response = herculesManagerApi.submitOnceTask(submitRequest);
+        BaseResponse<HerculesRunnableTaskInfo> response = herculesManagerApi.submitOnceTask(submitRequest);
 
         // 9. Process return result
         if (response.getCode() == 200 && response.getData() != null) {
-            HerculesTaskInfo herculesTaskInfo = response.getData();
+            HerculesRunnableTaskInfo herculesTaskInfo = response.getData();
             
             // Update task status
             taskPO.setTaskStatus(herculesTaskInfo.getStatus());

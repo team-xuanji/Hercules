@@ -59,8 +59,17 @@ public class HerculesRunnableTaskInfo {
     /**
      * sourceId.
      * If this task is triggered by a scheduled task, this value is the ID of the scheduled task.
+     * For a FORWARD task, this value is the ID of the parent task that forwarded it.
      */
     private String fromSourceId;
+
+    /**
+     * Forward-chain depth. Derived by the manager at submission time: 0 for
+     * business/cron/recover tasks, parent depth + 1 for FORWARD tasks.
+     * Client-supplied values are ignored — the manager always derives it and
+     * rejects submissions that would exceed the configured maximum depth.
+     */
+    private Integer chainDepth;
 
     /**
      * AES encryption IV, public key information

@@ -5,7 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import team.magic.flute.hercules.common.http.BaseResponse;
 import team.magic.flute.hercules.common.status.TaskStatus;
 import team.magic.flute.hercules.twelve.labors.api.HerculesManagerApi;
-import team.magic.flute.hercules.twelve.labors.business.inner.HerculesTaskInfo;
+import team.magic.flute.hercules.common.http.HerculesRunnableTaskInfo;
 import team.magic.flute.hercules.twelve.labors.dao.entity.CmsDataDownloadTaskPO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -173,10 +173,10 @@ public class TaskStatusSyncService {
             log.debug("Synchronizing task status: taskId={}, businessKey={}", taskId, task.getBusinessKey());
 
             // Call HerculesManagerApi to query task status
-            BaseResponse<HerculesTaskInfo> response = herculesManagerApi.checkTaskStatus(taskId);
+            BaseResponse<HerculesRunnableTaskInfo> response = herculesManagerApi.checkTaskStatus(taskId);
 
             if (response.getCode() == 200 && response.getData() != null) {
-                HerculesTaskInfo herculesTaskInfo = response.getData();
+                HerculesRunnableTaskInfo herculesTaskInfo = response.getData();
                 String newStatus = herculesTaskInfo.getStatus();
                 String oldStatus = task.getTaskStatus();
 

@@ -321,7 +321,11 @@ public class ExecutorProcessHandleImpl implements ExecutorProcessHandle, Closeab
                 if(request.getFromType() == null){
                     request.setFromType(TaskType.FORWARD);
                 }
-                if(request.getId()==null){
+                /*
+                 * Blank (empty) ids also derive the default: an explicit "" would
+                 * otherwise be submitted as-is and collide across distinct forwards.
+                 * */
+                if(StringUtils.isBlank(request.getId())){
                     request.setId(request.buildDefaultUniId());
                 }
                 if(!forwardInfoCache.contains(request.getId())){

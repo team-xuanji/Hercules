@@ -1,8 +1,7 @@
 package team.magic.flute.hercules.twelve.labors.api;
 
 import team.magic.flute.hercules.common.http.BaseResponse;
-import team.magic.flute.hercules.twelve.labors.business.inner.HerculesTaskInfo;
-import team.magic.flute.hercules.twelve.labors.business.inner.SubmitOnceTypeTaskRequestVO;
+import team.magic.flute.hercules.common.http.HerculesRunnableTaskInfo;
 import feign.Headers;
 import feign.Param;
 import feign.RequestLine;
@@ -51,15 +50,15 @@ public interface HerculesManagerApi {
      *   <li>Batch processing operations</li>
      * </ul>
      *
-     * @param submitTaskRequestVO the task submission request containing business operation details,
-     *                           execution context, and configuration parameters
-     * @return BaseResponse containing the created HerculesTaskInfo with task ID and initial status
+     * @param submitTaskRequest the task submission request containing business operation details,
+     *                          execution context, and configuration parameters
+     * @return BaseResponse containing the created task info with task ID and initial status
      * @throws RuntimeException if task submission fails due to validation errors or system issues
      */
     @RequestLine("POST /taskManager/submitOnceTask")
     @Headers("Content-Type: application/json;charset=UTF-8")
-    BaseResponse<HerculesTaskInfo> submitOnceTask(
-            SubmitOnceTypeTaskRequestVO submitTaskRequestVO
+    BaseResponse<HerculesRunnableTaskInfo> submitOnceTask(
+            HerculesRunnableTaskInfo submitTaskRequest
     );
 
     /**
@@ -79,12 +78,12 @@ public interface HerculesManagerApi {
      * </ul>
      *
      * @param taskId the unique identifier of the task to check
-     * @return BaseResponse containing the current HerculesTaskInfo with updated status and details
+     * @return BaseResponse containing the current task info with updated status and details
      * @throws RuntimeException if task ID is invalid or system error occurs during status retrieval
      */
     @RequestLine("GET /taskManager/checkTaskStatus?taskId={taskId}")
     @Headers("Content-Type: application/json;charset=UTF-8")
-    BaseResponse<HerculesTaskInfo> checkTaskStatus(
+    BaseResponse<HerculesRunnableTaskInfo> checkTaskStatus(
             @Param("taskId")String taskId
     );
 }
