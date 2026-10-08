@@ -21,7 +21,6 @@ import team.magic.flute.hercules.manager.service.*;
 import team.magic.flute.hercules.manager.util.DTOConvertUtils;
 import team.magic.flute.hercules.manager.vo.AsyncRetryOneTaskRequestVO;
 import team.magic.flute.hercules.manager.vo.HerculesRecoverTaskInfoVO;
-import team.magic.flute.hercules.manager.vo.SubmitOnceTypeTaskRequestVO;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -43,11 +42,11 @@ public class HerculesTaskManagerServiceImpl implements HerculesTaskManagerServic
 
 
     @Override
-    public BaseResponse<HerculesRunnableTaskInfo> submitOnceTask(SubmitOnceTypeTaskRequestVO submitTaskRequestVO) {
-        HerculesTaskInfo taskInfo = submitTaskRequestVO.parse2TaskInfo(runnerEnv.getHttpEncryptKey());
-        String pluginGroup = submitTaskRequestVO.getPluginGroup();
-        String pluginHandle = submitTaskRequestVO.getPluginHandle();
-        String executorRegion = submitTaskRequestVO.getExecutorRegion();
+    public BaseResponse<HerculesRunnableTaskInfo> submitOnceTask(HerculesRunnableTaskInfo submitTaskRequest) {
+        HerculesTaskInfo taskInfo = DTOConvertUtils.parse2TaskInfo(submitTaskRequest,runnerEnv.getHttpEncryptKey());
+        String pluginGroup = submitTaskRequest.getPluginGroup();
+        String pluginHandle = submitTaskRequest.getPluginHandle();
+        String executorRegion = submitTaskRequest.getExecutorRegion();
         PluginResourceInfo resourceInfo = pluginManagerService.searchPlugin(pluginHandle,pluginGroup);
         if(resourceInfo == null || resourceInfo.getResources()==null || resourceInfo.getResources().isEmpty()){
             return BaseResponse.fail(StrFormat.format("Tasks may not be submitted unless the corresponding plugin is registered.PluginGroup[{}],PluginHandle[{}]",pluginGroup,pluginHandle));

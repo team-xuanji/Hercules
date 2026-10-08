@@ -6,6 +6,8 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
 import team.magic.flute.hercules.common.status.TaskType;
 
+import javax.validation.constraints.NotBlank;
+
 @Data
 @Accessors(chain = true)
 public class HerculesRunnableTaskInfo {
@@ -19,6 +21,7 @@ public class HerculesRunnableTaskInfo {
     /**
      * Business Grouping of Executors
      */
+    @NotBlank
     private String executorRegion;
     /**
      * Description
@@ -27,14 +30,17 @@ public class HerculesRunnableTaskInfo {
     /**
      * plugin-key
      */
+    @NotBlank
     private String pluginHandle;
     /**
      * plugin-business-group
      */
+    @NotBlank
     private String pluginGroup;
     /**
      * The running context structure refers to the request in hercules-manager.
      */
+    @NotBlank
     private String context;
     /**
      * Maximum number of retries for synchronization
@@ -65,6 +71,13 @@ public class HerculesRunnableTaskInfo {
      * TaskStatus
      */
     private String status;
+
+    /**
+     * Bucket affinity key. When set, the task is routed to a deterministic
+     * bucket derived from this key instead of a random one, so tasks sharing
+     * the same key are polled and executed in submission order.
+     */
+    private String hashKey;
 
     public String buildDefaultUniId(){
         String uniId = StringUtils.joinWith(",",pluginGroup,pluginHandle,context,executorRegion,fromType,fromSourceId);

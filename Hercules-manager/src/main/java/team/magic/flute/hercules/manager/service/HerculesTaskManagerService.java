@@ -4,7 +4,6 @@ import team.magic.flute.hercules.common.http.BaseResponse;
 import team.magic.flute.hercules.common.http.HerculesRunnableTaskInfo;
 import team.magic.flute.hercules.manager.vo.AsyncRetryOneTaskRequestVO;
 import team.magic.flute.hercules.manager.vo.HerculesRecoverTaskInfoVO;
-import team.magic.flute.hercules.manager.vo.SubmitOnceTypeTaskRequestVO;
 
 /**
  * Hercules Task Manager Service Interface
@@ -26,11 +25,15 @@ public interface HerculesTaskManagerService {
      *
      * <p>Creates a new task in the system and queues it for execution by available executors.
      * The task will be assigned a unique identifier and tracked throughout its lifecycle.
+     * Executor-forwarded chain tasks arrive through the same entry and keep their lineage.
      *
-     * @param submitTaskRequestVO the task submission request containing all necessary task details
+     * <p>Submission is idempotent on the task id: re-submitting an existing id returns the
+     * already-persisted task instead of failing.
+     *
+     * @param submitTaskRequest the task submission request containing all necessary task details
      * @return BaseResponse containing the created task information with assigned ID and initial status
      */
-    BaseResponse<HerculesRunnableTaskInfo> submitOnceTask(SubmitOnceTypeTaskRequestVO submitTaskRequestVO);
+    BaseResponse<HerculesRunnableTaskInfo> submitOnceTask(HerculesRunnableTaskInfo submitTaskRequest);
 
     /**
      * Retrieve detailed information about a specific task.

@@ -7,7 +7,6 @@ import team.magic.flute.hercules.common.http.HerculesRunnableTaskInfo;
 import team.magic.flute.hercules.manager.service.HerculesTaskManagerService;
 import team.magic.flute.hercules.manager.vo.AsyncRetryOneTaskRequestVO;
 import team.magic.flute.hercules.manager.vo.HerculesRecoverTaskInfoVO;
-import team.magic.flute.hercules.manager.vo.SubmitOnceTypeTaskRequestVO;
 
 import javax.validation.Valid;
 
@@ -39,14 +38,19 @@ public class TaskManagerController {
      * Submit a one-time task for execution.
      *
      * <p>This endpoint accepts a task definition and submits it to the Hercules execution engine.
-     * The task will be queued for execution by available executors.
+     * The task will be queued for execution by available executors. Executor-forwarded chain
+     * tasks also arrive here and carry their lineage ({@code fromType=FORWARD},
+     * {@code fromSourceId=parent task id}).
      *
-     * @param submitTaskRequestVO the task submission request containing task details
+     * <p>Submission is idempotent on the task id: re-submitting an existing id returns the
+     * already-persisted task instead of failing.
+     *
+     * @param submitTaskRequest the task submission request containing task details
      * @return BaseResponse containing the created task information
      */
     @PostMapping("/submitOnceTask")
-    public BaseResponse<HerculesRunnableTaskInfo> submitOnceTask(@Valid @RequestBody SubmitOnceTypeTaskRequestVO submitTaskRequestVO){
-        return taskManagerService.submitOnceTask(submitTaskRequestVO);
+    public BaseResponse<HerculesRunnableTaskInfo> submitOnceTask(@Valid @RequestBody HerculesRunnableTaskInfo submitTaskRequest){
+        return taskManagerService.submitOnceTask(submitTaskRequest);
     }
 
     /**

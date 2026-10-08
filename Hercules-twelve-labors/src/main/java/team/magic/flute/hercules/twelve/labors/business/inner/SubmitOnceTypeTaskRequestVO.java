@@ -11,7 +11,7 @@ import lombok.experimental.Accessors;
  * to create and execute business operations through the distributed task execution framework.
  *
  * <p><strong>Deprecation Notice:</strong> This class is deprecated and should be replaced
- * with {@code team.magic.flute.hercules.common.http.HerculesSubmitOnceTaskRequest} for
+ * with {@code team.magic.flute.hercules.common.http.HerculesRunnableTaskInfo} for
  * new implementations. The common module provides a standardized and more comprehensive
  * task submission interface that supports advanced features and better integration.
  *
@@ -35,7 +35,7 @@ import lombok.experimental.Accessors;
  * @author Hercules Team
  * @version 1.0
  * @since 1.0
- * @deprecated Use {@code team.magic.flute.hercules.common.http.HerculesSubmitOnceTaskRequest} instead
+ * @deprecated Use {@code team.magic.flute.hercules.common.http.HerculesRunnableTaskInfo} instead
  */
 @Data
 @Accessors(chain = true)

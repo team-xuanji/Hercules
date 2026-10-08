@@ -1,10 +1,18 @@
 package team.magic.flute.hercules.manager.util;
 
+import com.github.f4b6a3.uuid.alt.GUID;
+import org.apache.commons.lang3.RandomUtils;
+import org.apache.commons.lang3.StringUtils;
 import team.magic.flute.hercules.common.http.HerculesRunnableTaskInfo;
+import team.magic.flute.hercules.common.status.TaskStatus;
 import team.magic.flute.hercules.common.status.TaskType;
 import team.magic.flute.hercules.common.util.AESUtils;
 import team.magic.flute.hercules.common.util.JacksonUtils;
 import team.magic.flute.hercules.manager.dao.po.HerculesTaskInfo;
+import team.magic.flute.hercules.manager.entity.recover.RecoverStrategy;
+
+import static team.magic.flute.hercules.common.global.Constant.TASK_MAX_BUCKET_SIZE;
+import static team.magic.flute.hercules.common.status.TaskType.ONCE;
 
 public class DTOConvertUtils {
 
@@ -26,6 +34,48 @@ public class DTOConvertUtils {
                 .setAsyncRecoverContext(taskInfo.getAsyncRecoverContext()!=null? JacksonUtils.writeValueAsString(taskInfo.getAsyncRecoverContext()) :"")
                 .setFromSourceId(taskInfo.getSourceId())
                 .setFromType(TaskType.valueOf(taskInfo.getFromType()));
+    }
+
+    /**
+     * Convert a task submission request (once-task or executor-forwarded chain task)
+     * into the persisted task entity.
+     *
+     * <p>Both directions share {@link HerculesRunnableTaskInfo} as the wire type,
+     * so executor-forwarded tasks keep their lineage ({@code fromType=FORWARD},
+     * {@code fromSourceId=parent task id}) instead of being flattened to ONCE.
+     *
+     * @param request the submission request; {@code id} may be blank to auto-generate,
+     *                and {@code fromType} may be null to default to {@link TaskType#ONCE}
+     * @param aesKey  channel key used to decrypt {@code context} when {@code encryptIV} is present
+     */
+    public static HerculesTaskInfo parse2TaskInfo(HerculesRunnableTaskInfo request, String aesKey){
+        RecoverStrategy recoverStrategy = null;
+        if(StringUtils.isNotBlank(request.getAsyncRecoverContext()) && !"{}".equals(request.getAsyncRecoverContext().trim())){
+            recoverStrategy = JacksonUtils.readValue(request.getAsyncRecoverContext(),RecoverStrategy.class);
+        }
+        String finalContext = request.getContext();
+        if(StringUtils.isNotBlank(finalContext) && StringUtils.isNotBlank(request.getEncryptIV())){
+            finalContext = AESUtils.decrypt(finalContext,aesKey,request.getEncryptIV());
+        }
+        int bucketId = RandomUtils.nextInt(1,TASK_MAX_BUCKET_SIZE);
+        if(StringUtils.isNotBlank(request.getHashKey())){
+            bucketId = (Math.abs(request.getHashKey().hashCode())%TASK_MAX_BUCKET_SIZE)+1;
+        }
+        TaskType fromType = request.getFromType()!=null?request.getFromType():ONCE;
+        return new HerculesTaskInfo()
+                .setId(request.getId()!=null?request.getId():GUID.v7().toString().replace("-",""))
+                .setExecutorRegion(request.getExecutorRegion())
+                .setDesc(request.getDesc())
+                .setPluginGroup(request.getPluginGroup())
+                .setPluginHandle(request.getPluginHandle())
+                .setFromType(fromType.name())
+                .setContext(finalContext)
+                .setEnable(true)
+                .setSourceId(request.getFromSourceId())
+                .setBucketId(bucketId)
+                .setStatus(TaskStatus.INIT.name())
+                .setAsyncRecoverContext(recoverStrategy)
+                .setMaxRetryTimes(request.getMaxRetryTimes()!=null?request.getMaxRetryTimes():5);
     }
 
 }
