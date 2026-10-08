@@ -14,6 +14,11 @@ Status: Proposed | Accepted | Superseded by ADR-XXXX.
 | [0007](0007-batch-lock-protocol.md) | Batch task lock — one UPDATE, then re-read to classify | Accepted |
 | [0008](0008-plugin-classloading-model.md) | Plugin classloading — parent delegation, lazy download, version rotation | Accepted |
 | [0009](0009-executor-identity-threat-boundary.md) | Executor identity model and threat boundary | Accepted |
+| [0010](0010-unified-task-wire-dto.md) | Single shared task wire DTO for both directions | Accepted |
+| [0011](0011-forward-chain-semantics.md) | Forward chain semantics — at-least-once, deterministic derived IDs, bounded depth | Accepted |
+| [0012](0012-embedded-duckdb-per-executor.md) | Embedded per-executor DuckDB as the OLAP engine | Accepted |
+| [0013](0013-binary-fetch-channel.md) | Binary fetch channel — Fory + ZSTD + AES-GCM fixed pipeline | Accepted |
+| [0014](0014-tiered-recover-tables.md) | Tiered recover tables for asynchronous task recovery | Accepted |
 
 ## Convention
 
