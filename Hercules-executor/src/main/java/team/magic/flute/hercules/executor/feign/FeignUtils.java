@@ -15,7 +15,7 @@ public class FeignUtils {
                 .encoder(FeignConfig.jacksonEncoder())
                 .decoder(FeignConfig.jacksonDecoder())
                 .logger(FeignConfig.slf4jLogger())
-                .logLevel(Logger.Level.FULL)
+                .logLevel(Logger.Level.BASIC)
                 .contract(new Contract.Default())
                 .retryer(
                         new Retryer.Default(

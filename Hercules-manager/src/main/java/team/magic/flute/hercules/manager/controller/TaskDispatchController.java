@@ -180,13 +180,6 @@ public class TaskDispatchController {
      */
     @PutMapping("/tryLockBatchTask")
     public BaseResponse<BatchTaskLockProcessResult> tryLockBatchTask(@Valid @RequestBody BatchLockRequest batchLockRequest){
-        String executorId = batchLockRequest.getExecutorId();
-        String passSign = batchLockRequest.getPassSign();
-        String executorRegion = batchLockRequest.getExecutorRegion();
-        String subject = ExecutorInfoUtils.buildSignSubject(batchLockRequest.getTaskIds());
-        if (isInvalidExecutorOp(executorId,subject,passSign,ExecutorTaskOps.LOCK,executorRegion)) {
-            return BaseResponse.fail("Invalid executor identity signature.");
-        }
         boolean allSuccess = false;
         Set<String> taskIds = Optional.ofNullable(batchLockRequest.getTaskIds())
                 .orElse(new ArrayList<>())
@@ -195,6 +188,13 @@ public class TaskDispatchController {
             log.info("taskIds is empty.");
             return BaseResponse.success(new BatchTaskLockProcessResult()
                     .setAllSuccess(allSuccess));
+        }
+        String executorId = batchLockRequest.getExecutorId();
+        String passSign = batchLockRequest.getPassSign();
+        String executorRegion = batchLockRequest.getExecutorRegion();
+        String subject = ExecutorInfoUtils.buildSignSubject(batchLockRequest.getTaskIds());
+        if (isInvalidExecutorOp(executorId,subject,passSign,ExecutorTaskOps.LOCK,executorRegion)) {
+            return BaseResponse.fail("Invalid executor identity signature.");
         }
         List<HerculesTaskInfo> taskInfo = executorTasksService.list(new LambdaQueryWrapper<HerculesTaskInfo>()
                 .in(HerculesTaskInfo::getId, taskIds));

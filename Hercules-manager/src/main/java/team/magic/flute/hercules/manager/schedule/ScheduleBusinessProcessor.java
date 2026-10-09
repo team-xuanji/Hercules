@@ -304,12 +304,14 @@ public class ScheduleBusinessProcessor {
                     taskCache.remove(id);
                     canDeleteIds.addAll(refIds.get(id));   // superseded by a live task — consume its recover rows
                 });
-                if(herculesExecutorTasksService.saveBatch(taskCache.values())){
-                    taskCache.keySet().forEach(x->{
-                        canDeleteIds.addAll(refIds.get(x));
-                    });
-                }else{
-                    log.error("Failed to resurrect recover tasks [{}], rows kept for next round", taskCache.keySet());
+                if(!taskCache.isEmpty()){
+                    if(herculesExecutorTasksService.saveBatch(taskCache.values())){
+                        taskCache.keySet().forEach(x->{
+                            canDeleteIds.addAll(refIds.get(x));
+                        });
+                    }else{
+                        log.error("Failed to resurrect recover tasks [{}], rows kept for next round", taskCache.keySet());
+                    }
                 }
             }
             if(!canDeleteIds.isEmpty()){
