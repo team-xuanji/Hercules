@@ -84,7 +84,7 @@ public class ScheduleBusinessProcessor {
         }
         deadTasks = deadTasks.stream().filter(x->!existsExecutorIds.contains(x.getOwnerId())).collect(Collectors.toList());
         Set<String> change2InitIds = new HashSet<>();
-        Set<String> change2CancelledIds = new HashSet<>();
+        Set<String> change2FailedIds = new HashSet<>();
         if(!deadTasks.isEmpty()){
             for (HerculesTaskInfo deadTask : deadTasks) {
                 if(deadTask.getAsyncRecoverContext()!=null){
@@ -100,17 +100,26 @@ public class ScheduleBusinessProcessor {
                         change2InitIds.add(deadTask.getId());
                         log.warn("task recover failed,msg [{}],deadTaskInfo[{}]",result.getMsg(), JacksonUtils.writeValueAsString(deadTask));
                     } else {
-                        change2CancelledIds.add(deadTask.getId());
+                        change2FailedIds.add(deadTask.getId());
                     }
                 } else {
                     change2InitIds.add(deadTask.getId());
                 }
             }
 
+
+            /*
+             * A dead task with an async-recover context hands its fate to the
+             * recover tables: it is marked FAILED (not CANCELLED) so that
+             * recoverEvents — whose conditional UPDATE matches status=FAILED —
+             * picks it up later. CANCELLED would make the pending recover row
+             * a permanent no-op. The status guard re-checks RUNNING so a task
+             * that moved on between scan and update is not clobbered.
+             * */
             tasksService.update(new LambdaUpdateWrapper<HerculesTaskInfo>()
-                    .in(HerculesTaskInfo::getId,change2CancelledIds)
+                    .in(HerculesTaskInfo::getId,change2FailedIds)
                     .eq(HerculesTaskInfo::getStatus, TaskStatus.RUNNING.name())
-                    .set(HerculesTaskInfo::getStatus, TaskStatus.CANCELLED.name())
+                    .set(HerculesTaskInfo::getStatus, TaskStatus.FAILED.name())
                     .set(HerculesTaskInfo::getOwnerId, null)
                     .set(HerculesTaskInfo::getCheckPointInfo, null)
             );
@@ -153,6 +162,79 @@ public class ScheduleBusinessProcessor {
         }
     }
 
+    /**
+     * Re-dispatch due recover rows of one tier (HOT/WARM/COLD) back into the
+     * task table. Idempotent by construction: recovery is a conditional UPDATE
+     * (id + FAILED -&gt; INIT), so overlapping manager bucket windows and
+     * duplicate rows for the same task can never execute a task twice.
+     *
+     * <pre>
+     *  list up to 10 due rows in this manager's bucket range
+     *        |
+     *        v
+     *  for each recover row ---------------------------------------------+
+     *        |                                                           |
+     *        | taskInfo == null (corrupt)                                |
+     *        v                                                           |
+     *  +----------------------+   taskId already processed (duplicate)   |
+     *  | consume the row      |<-----------------------------------------+
+     *  +----------------------+
+     *        | new taskId
+     *        v
+     *  conditional UPDATE  WHERE id = taskId AND status = FAILED
+     *                      SET   status = INIT, ownerId = null,
+     *                            checkPointInfo = null,
+     *                            asyncRecoverContext = snapshot
+     *        |
+     *        +---------------------+---------------------------+
+     *        | 1 row updated       | 0 rows (not FAILED)       |
+     *        v                     v
+     *  consume ALL recover    stage the snapshot in taskCache
+     *  rows of this taskId    for the post-loop fallback
+     *        |                     |
+     *        |              after the loop (fallback, per cached id)
+     *        |                     |
+     *        |            +--------+--------+------------------+
+     *        |            | original row     | original row    |
+     *        |            | exists (alive    | missing         |
+     *        |            | again)           |                 |
+     *        |            v                  v                 |
+     *        |     +--------------+   +---------------------+ |
+     *        |     | the recovery |   | saveBatch: resurrect| |
+     *        |     | intent is    |   | under the SAME id   | |
+     *        |     | superseded - |   +----------+----------+ |
+     *        |     | consume rows |      success | failure    |
+     *        |     +--------------+   +----------+ ---------+ |
+     *        |                        | consume  | keep rows, |
+     *        |                        | rows     | error log, |
+     *        |                        +----------+ retry next |
+     *        |                                   + tick       |
+     *        v
+     *  removeBatchByIds(consumed rows only)
+     * </pre>
+     *
+     * Why "row exists" means "consume, do not retry": at this point the row
+     * cannot be FAILED (the conditional UPDATE above would have matched), so
+     * it is SUCCESS / INIT / RUNNING / CANCELLED:
+     * SUCCESS   — recovered earlier and finished;
+     * INIT      — recovered just now;
+     * RUNNING   — recovered and executing again (a fake-dead task is handled
+     *             by the dead-task sweeper, which re-registers a recover row);
+     * CANCELLED — recovered but later invalidated.
+     * In every case the recovery intent has already been fulfilled or
+     * superseded, so the recover rows are consumed rather than retried.
+     *
+     * <p>Deduplication: several recover rows may carry the snapshot of the
+     * same original task (asyncRetryOneTask has no idempotency key, and both
+     * the executor-fail path and the dead-task scan can register one). All
+     * rows referencing one taskId are grouped in refIds and consumed
+     * together as soon as any of them drives a confirmed recovery.
+     *
+     * <p>Known boundary condition: if a task is recovered, runs to a terminal
+     * state, and its recover rows stay blocked long enough for the task row
+     * to be purged by the retention sweeper, the fallback then re-inserts the
+     * task — for a SUCCESS outcome this means a duplicate execution.
+     */
     @Transactional(rollbackFor = Exception.class)
     public void recoverEvents(RecoverEventLevel eventLevel){
         try{
@@ -177,17 +259,61 @@ public class ScheduleBusinessProcessor {
                     .lt(HerculesFailedTaskPo::getBucketId,end)
                     .last(" LIMIT 10")
             );
-            Collection<HerculesTaskInfo> newTasks = tasks.stream()
-                    .map(HerculesFailedTaskPo::getTaskInfo)
-                    .filter(Objects::nonNull)
-                    .peek(x-> x.setId(null))
-                    .collect(Collectors.toList());
-            if(!newTasks.isEmpty()){
-                if(herculesExecutorTasksService.saveBatch(newTasks)){
-                    failedTaskService.removeBatchByIds(tasks.stream().map(HerculesFailedTaskPo::getId).collect(Collectors.toList()));
-                }else{
-                    log.error("Failed to recover failed tasks! Unable to restore failed tasks to normal tasks!");
+
+            Map<String,Set<Long>> refIds = new HashMap<>();
+            Set<Long> canDeleteIds = new HashSet<>();
+            Set<String> processedTaskIds = new HashSet<>();
+            Map<String,HerculesTaskInfo> taskCache = new HashMap<>();
+            for (HerculesFailedTaskPo po : tasks) {
+                HerculesTaskInfo failedTask = po.getTaskInfo();
+                if(failedTask==null){
+                    canDeleteIds.add(po.getId());
+                    continue;
                 }
+                String failedTaskId = failedTask.getId();
+                refIds.computeIfAbsent(failedTaskId,(key)->new HashSet<>()).add(po.getId());
+                if(processedTaskIds.contains(failedTaskId)){
+                    canDeleteIds.add(po.getId());
+                    continue;
+                }
+                LambdaUpdateWrapper<HerculesTaskInfo> taskStatusUpdateWrapper = new LambdaUpdateWrapper<HerculesTaskInfo>()
+                        .eq(HerculesTaskInfo::getId,failedTaskId)
+                        .eq(HerculesTaskInfo::getStatus,TaskStatus.FAILED.name())
+                        .set(HerculesTaskInfo::getStatus,TaskStatus.INIT.name())
+                        .set(HerculesTaskInfo::getCheckPointInfo,null)
+                        .set(HerculesTaskInfo::getAsyncRecoverContext,failedTask.getAsyncRecoverContext())
+                        .set(HerculesTaskInfo::getOwnerId,null);
+                boolean updateSuccess = herculesExecutorTasksService.update(taskStatusUpdateWrapper);
+                if(!updateSuccess && !processedTaskIds.contains(failedTaskId)){
+                    failedTask.setStatus(TaskStatus.INIT.name());
+                    failedTask.setOwnerId(null);
+                    failedTask.setCheckPointInfo(null);
+                    taskCache.putIfAbsent(failedTaskId,failedTask);
+                }else{
+                    canDeleteIds.addAll(refIds.get(failedTaskId));
+                    processedTaskIds.add(failedTaskId);
+                    taskCache.remove(failedTaskId);
+                }
+            }
+            if(!taskCache.isEmpty()){
+                Set<String> existsIds = herculesExecutorTasksService.listByIds(taskCache.keySet())
+                        .stream()
+                        .map(HerculesTaskInfo::getId)
+                        .collect(Collectors.toSet());
+                existsIds.forEach(id -> {
+                    taskCache.remove(id);
+                    canDeleteIds.addAll(refIds.get(id));   // superseded by a live task — consume its recover rows
+                });
+                if(herculesExecutorTasksService.saveBatch(taskCache.values())){
+                    taskCache.keySet().forEach(x->{
+                        canDeleteIds.addAll(refIds.get(x));
+                    });
+                }else{
+                    log.error("Failed to resurrect recover tasks [{}], rows kept for next round", taskCache.keySet());
+                }
+            }
+            if(!canDeleteIds.isEmpty()){
+                failedTaskService.removeBatchByIds(canDeleteIds);
             }
         }finally {
             RecoverTableNameHandle.remove();

@@ -35,14 +35,14 @@ public class RecoverTaskDispatch {
                 if(waterMark>=warmRecoverWatermark){
                     log.info("Starting recovery of warm data.");
                     processor.recoverEvents(RecoverEventLevel.WARM);
-                    long warmRecoverInterval = 3600000;
+                    long warmRecoverInterval = 1800000;
                     warmRecoverWatermark = waterMark+ warmRecoverInterval;
                 }
 
                 if(waterMark>=coldRecoverWatermark){
                     log.info("Starting recovery of cold data.");
                     processor.recoverEvents(RecoverEventLevel.COLD);
-                    long coldRecoverInterval = 3600000 * 8;
+                    long coldRecoverInterval = 3600000;
                     coldRecoverWatermark = waterMark+ coldRecoverInterval;
                 }
             }finally {

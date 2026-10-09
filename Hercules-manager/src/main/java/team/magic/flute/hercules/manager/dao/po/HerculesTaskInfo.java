@@ -84,10 +84,8 @@ public class HerculesTaskInfo {
         if(!TaskType.ASYNC_RECOVER.name().equalsIgnoreCase(getFromType())){
             herculesTaskInfo.setSourceId(this.id);
         }
-        herculesTaskInfo.setId(null);
         herculesTaskInfo.setFromType(TaskType.ASYNC_RECOVER.name());
         herculesTaskInfo.setStatus(TaskStatus.INIT.name());
-        herculesTaskInfo.setOwnerId(null);
         herculesTaskInfo.setCheckPointInfo(null);
         LocalDateTime nextProcessTime = null;
         if(herculesTaskInfo.getAsyncRecoverContext().processFinished()){
