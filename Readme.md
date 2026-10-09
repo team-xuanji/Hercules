@@ -17,6 +17,7 @@
 - **[Environment Variables Guide](Hercules-twelve-labors/docs/environment-variables-guide.md)** - Environment variable configuration
 - **[Plugin Security Guide](Hercules-twelve-labors/docs/plugin-security-guide.md)** - Plugin security and white list configuration
 - **[Database Initialization](Hercules-twelve-labors/docs/database-initialization.md)** - Database setup and initialization
+- **[Executor Bare-Metal Deployment (Chinese guide)](Hercules-executor/docs/bare-metal-deployment.md)** - systemd deployment, external config, DuckDB, and self-check
 
 ## Overview
 

@@ -17,6 +17,7 @@
 - **[环境变量指南](Hercules-twelve-labors/docs/environment-variables-guide.md)** - 环境变量配置
 - **[插件安全指南](Hercules-twelve-labors/docs/plugin-security-guide.md)** - 插件安全和白名单配置
 - **[数据库初始化](Hercules-twelve-labors/docs/database-initialization.md)** - 数据库设置和初始化
+- **[Executor 裸机部署](Hercules-executor/docs/bare-metal-deployment.md)** - systemd 裸机运行方案、外置配置、DuckDB 与自检
 
 ## 系统概述
 
