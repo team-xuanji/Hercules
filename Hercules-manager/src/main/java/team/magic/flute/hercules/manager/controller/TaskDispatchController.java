@@ -254,7 +254,8 @@ public class TaskDispatchController {
                 .eq(HerculesTaskInfo::getOwnerId,executorId)
                 .eq(HerculesTaskInfo::getStatus, TaskStatus.RUNNING.name())
                 .set(HerculesTaskInfo::getCheckPointInfo,null)
-                .set(HerculesTaskInfo::getStatus,TaskStatus.INIT.name());
+                .set(HerculesTaskInfo::getStatus,TaskStatus.INIT.name())
+                .set(HerculesTaskInfo::getOwnerId,null);
         return BaseResponse.success(executorTasksService.update(updateWrapper));
     }
 
