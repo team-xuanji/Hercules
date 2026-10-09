@@ -7,6 +7,7 @@ import team.magic.flute.hercules.manager.schedule.CronTaskDispatch;
 import team.magic.flute.hercules.manager.schedule.RecoverTaskDispatch;
 import team.magic.flute.hercules.manager.service.HerculesCronJobManagerService;
 import team.magic.flute.hercules.manager.vo.AsyncRetryOneTaskRequestVO;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -14,8 +15,14 @@ import org.springframework.test.context.ActiveProfiles;
 
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Integration tests: boot the full Spring context against the qa/test profile
+ * (MySQL, OSS) and exercise live controllers. Tagged so the default
+ * {@code mvn test} run skips them; run explicitly via the {@code integration} group.
+ */
 @SpringBootTest(classes = {HerculesManagerApplication.class}, webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)// 指定启动类
 @ActiveProfiles({"qa", "test"})
+@Tag("integration")
 public class Test01 {
 
     @Autowired

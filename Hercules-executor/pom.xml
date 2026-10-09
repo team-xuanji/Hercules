@@ -161,7 +161,16 @@
                     <source>1.8</source>
                     <target>1.8</target>
                     <encoding>UTF-8</encoding>
-                    <skip>true</skip>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- Skip JUnit 5 @Tag("integration") tests (full Spring context,
+                         MySQL/OSS) in the default mvn test run. Re-enable with
+                         -DexcludedGroups= on the command line. -->
+                    <excludedGroups>integration</excludedGroups>
                 </configuration>
             </plugin>
         </plugins>

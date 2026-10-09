@@ -165,5 +165,34 @@
     </dependencies>
   </dependencyManagement>
 
+  <build>
+    <pluginManagement>
+      <plugins>
+        <!--
+          Surefire: run pure unit tests by default, exclude anything tagged
+          "integration" (JUnit 5 @Tag) and the legacy JUnit 3 external-resource
+          tests (DuckDB/OSS/network) which cannot be tagged. Integration suites
+          are re-enabled with -DexcludedGroups= or by dropping the excludes.
+        -->
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <version>3.2.5</version>
+          <configuration>
+            <!-- Legacy JUnit 3 external-resource tests (DuckDB/OSS/network) cannot
+                 be tagged, so exclude them by pattern everywhere. The JUnit 5
+                 @Tag("integration") exclusion is configured per-module in the
+                 modules that actually carry JUnit Platform (manager/executor). -->
+            <excludes>
+              <exclude>**/AppTest.java</exclude>
+              <exclude>**/AppTest01.java</exclude>
+              <exclude>**/PluginTest.java</exclude>
+              <exclude>**/ExportPluginTest.java</exclude>
+            </excludes>
+          </configuration>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+  </build>
 
 </project>
