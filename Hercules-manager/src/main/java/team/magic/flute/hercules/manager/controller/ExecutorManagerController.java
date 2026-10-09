@@ -12,6 +12,7 @@ import team.magic.flute.hercules.manager.vo.ExecutorInfoReportRequestVO;
 
 import javax.validation.Valid;
 import java.util.Collection;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/executorManager")
@@ -29,6 +30,7 @@ public class ExecutorManagerController {
 
     @GetMapping("/listAllRunningExecutor")
     public BaseResponse<Collection<HerculesExecutorInfo>> getAllExecutorInfo(){
-        return BaseResponse.success(herculesExecutorInfoService.getAllExecutorInfo());
+        return BaseResponse.success(herculesExecutorInfoService.getAllExecutorInfo()
+                .stream().peek(x-> x.setIdentityId(null)).collect(Collectors.toList()));
     }
 }

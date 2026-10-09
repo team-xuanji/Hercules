@@ -257,7 +257,7 @@ public class AESUtils {
             byte[] ivBytes = Base64.getDecoder().decode(iv);
             return encryptWithBouncyCastle(data, keyBytes, ivBytes);
         } catch (Exception e) {
-            throw new RuntimeException(StrFormat.format("Byte array encryption failed, key[{}], iv[{}]",key,iv), e);
+            throw new RuntimeException(StrFormat.format("Byte array encryption failed, iv[{}]",iv), e);
         }
     }
 

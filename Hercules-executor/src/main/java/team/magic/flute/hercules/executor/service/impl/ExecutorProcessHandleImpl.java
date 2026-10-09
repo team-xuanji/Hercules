@@ -296,8 +296,8 @@ public class ExecutorProcessHandleImpl implements ExecutorProcessHandle, Closeab
             if(!processSuccess){
                 // try one last time.
                 try {
-                    tryDomain(maxRetryTimes,()->failed(taskInfo),ExecutorTaskOps.FAIL);
                     tryAsyncRecover(taskInfo, e);
+                    tryDomain(maxRetryTimes,()->failed(taskInfo),ExecutorTaskOps.FAIL);
                 }catch(Exception ex) {
                     log.error("Can not report task status.Task is Dead,TaskId [{}]",taskInfo.getId(),ex);
                 }
@@ -338,9 +338,10 @@ public class ExecutorProcessHandleImpl implements ExecutorProcessHandle, Closeab
 
     private void tryAsyncRecover(HerculesRunnableTaskInfo taskInfo, Exception e) {
         if(StringUtils.isNotBlank(taskInfo.getAsyncRecoverContext()) && !"{}".equals(taskInfo.getAsyncRecoverContext().trim())){
+            String errorMsg = e.getMessage()==null?e.getClass().getSimpleName():Objects.toString(e.getMessage()).substring(0,Math.min(500,e.getMessage().length()));
             BaseResponse<PluginResourceInfo> response = managerApi.asyncRerunOneTask(new AsyncRetryOneTaskRequestVO()
                     .setTaskId(taskInfo.getId())
-                    .setErrorMessage(Objects.toString(e.getMessage()).substring(0,500)));
+                    .setErrorMessage(errorMsg));
             if(response.getCode()!= EnumResponseType.SUCCESS.getCode()){
                 log.error("Asynchronous retry failed! Task ID [{}], Error message [{}]", taskInfo.getId(),response.getMsg());
             }

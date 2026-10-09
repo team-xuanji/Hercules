@@ -109,6 +109,7 @@ public class ScheduleBusinessProcessor {
 
             tasksService.update(new LambdaUpdateWrapper<HerculesTaskInfo>()
                     .in(HerculesTaskInfo::getId,change2CancelledIds)
+                    .eq(HerculesTaskInfo::getStatus, TaskStatus.RUNNING.name())
                     .set(HerculesTaskInfo::getStatus, TaskStatus.CANCELLED.name())
                     .set(HerculesTaskInfo::getOwnerId, null)
                     .set(HerculesTaskInfo::getCheckPointInfo, null)
@@ -116,6 +117,7 @@ public class ScheduleBusinessProcessor {
 
             tasksService.update(new LambdaUpdateWrapper<HerculesTaskInfo>()
                     .in(HerculesTaskInfo::getId,change2InitIds)
+                    .eq(HerculesTaskInfo::getStatus, TaskStatus.RUNNING.name())
                     .set(HerculesTaskInfo::getStatus, TaskStatus.INIT.name())
                     .set(HerculesTaskInfo::getOwnerId, null)
                     .set(HerculesTaskInfo::getCheckPointInfo, null)
