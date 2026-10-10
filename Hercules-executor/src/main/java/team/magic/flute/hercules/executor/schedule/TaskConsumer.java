@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -153,7 +154,7 @@ public class TaskConsumer {
                     runnerEnv.getRunnerInstanceId(),
                     fetchSize,
                     runnerEnv.getHttpEncryptKey(),
-                    ExecutorInfoUtils.getExecutorSign(runnerEnv.getRunnerIdentityId(),runnerEnv.getRunnerInstanceId(),ExecutorTaskOps.FETCH));
+                    ExecutorInfoUtils.signingHeaders(ExecutorTaskOps.FETCH, runnerEnv.getRunnerInstanceId()));
             if(taskInfoResp.isEmpty()){
                 log.info("There are no tasks to process.");
                 // When unable to obtain a task, reduce the fetch frequency.
@@ -215,10 +216,10 @@ public class TaskConsumer {
         if(batchProcess){
             List<String> ids = filteredTask.stream().map(HerculesRunnableTaskInfo::getId).collect(Collectors.toList());
             BaseResponse<BatchTaskLockProcessResult> resp = managerApi.tryLockBatchTask(new BatchLockRequest()
-                    .setExecutorId(runnerEnv.getRunnerInstanceId())
-                    .setExecutorRegion(runnerEnv.getExecutorRegion())
-                    .setPassSign(ExecutorInfoUtils.getExecutorSign(runnerEnv.getRunnerIdentityId(),ExecutorInfoUtils.buildSignSubject(ids), ExecutorTaskOps.LOCK))
-                    .setTaskIds(ids));
+                            .setExecutorId(runnerEnv.getRunnerInstanceId())
+                            .setExecutorRegion(runnerEnv.getExecutorRegion())
+                            .setTaskIds(ids),
+                    ExecutorInfoUtils.signingHeaders(ExecutorTaskOps.LOCK, ExecutorInfoUtils.buildSignSubject(ids)));
             if(resp.getCode()!=200){
                 log.error("Unable to lock the task, skipping execution. Response body[{}]", JacksonUtils.writeValueAsString(resp));
                 return;
@@ -239,7 +240,7 @@ public class TaskConsumer {
                         runnerEnv.getExecutorRegion(),
                         runnerEnv.getRunnerInstanceId(),
                         taskInfo.getId(),
-                        ExecutorInfoUtils.getExecutorSign(runnerEnv.getRunnerIdentityId(),taskInfo.getId(), ExecutorTaskOps.LOCK)
+                        ExecutorInfoUtils.signingHeaders(ExecutorTaskOps.LOCK, taskInfo.getId())
                 );
                 if(result.getCode()!=200){
                     log.error("Unable to lock the task, skipping execution. Response body[{}]", JacksonUtils.writeValueAsString(result));
@@ -252,7 +253,5 @@ public class TaskConsumer {
                 }
             }
         }
-
     }
-
 }

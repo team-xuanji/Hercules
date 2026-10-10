@@ -1,5 +1,6 @@
 package team.magic.flute.hercules.executor.api;
 
+import feign.HeaderMap;
 import feign.Headers;
 import feign.Param;
 import feign.RequestLine;
@@ -58,11 +59,15 @@ public interface HerculesManagerApi {
      * Fory-serialized {@link TaskFetchResult} (optionally compressed and/or
      * encrypted via response headers), avoiding JSON serialization overhead.
      *
+     * <p>The request is signed via the {@code X-Hercules-*} headers in
+     * {@code headers} (op=FETCH, subject=executorId); the signing interceptor
+     * fills in timestamp and signature. See ADR-0016.
+     *
      * @param executorRegion business group of the executor
      * @param executorId     per-boot instance id
      * @param fetchLimit     maximum number of tasks to return
      * @param aesKey         channel key used only when the response carries an AES IV header
-     * @param passSign       HMAC of {@code executorId + ":FETCH"}, see ADR-0001
+     * @param headers        signing headers (op + subject); the rest are injected by the interceptor
      * @return the fetch result; {@link TaskFetchResult#isEmpty()} when there is nothing to do.
      *         {@link TaskFetchResult#isCrossPartition()} signals an all-bucket fallback scan
      * @throws RuntimeException on non-200 status or unreadable body
@@ -72,24 +77,24 @@ public interface HerculesManagerApi {
             String executorId,
             Integer fetchLimit,
             String aesKey,
-            String passSign
+            Map<String,String> headers
     ) {
         byte [] data = new byte[0];
-        try (Response response = tryFetchTasksWithByteArray(executorRegion, executorId, fetchLimit, passSign)) {
+        try (Response response = tryFetchTasksWithByteArray(executorRegion, executorId, fetchLimit, headers)) {
             if (response.status() == 200) {
                 Response.Body body = response.body();
                 if (body != null) {
                     try (InputStream inputStream = body.asInputStream()) {
                         data = IOUtils.toByteArray(inputStream);
-                        Map<String, Collection<String>> headers = response.headers();
-                        Collection<String> aesIV = headers.get(HERCULES_BINARY_RESP_AES_IV);
+                        Map<String, Collection<String>> headers2 = response.headers();
+                        Collection<String> aesIV = headers2.get(HERCULES_BINARY_RESP_AES_IV);
                         if(aesIV!=null && !aesIV.isEmpty()){
                             data = AESUtils.decrypt(data,aesKey,aesIV.stream().findFirst().get());
                         }
-                        Collection<String> compressTypeConfig = headers.get(HERCULES_BINARY_RESP_COMPRESS_TYPE);
+                        Collection<String> compressTypeConfig = headers2.get(HERCULES_BINARY_RESP_COMPRESS_TYPE);
                         if(compressTypeConfig!=null && !compressTypeConfig.isEmpty()){
                             String compressTypeStr = compressTypeConfig.stream().findFirst().get();
-                            int originalSize = Integer.parseInt(headers.get(HERCULES_BINARY_RESP_ORIGINALS_SIZE).stream().findFirst().get());
+                            int originalSize = Integer.parseInt(headers2.get(HERCULES_BINARY_RESP_ORIGINALS_SIZE).stream().findFirst().get());
                             HerculesHttpCompressType compressType = HerculesHttpCompressType.valueOf(compressTypeStr);
                             data = BinaryCompressUtils.deCompress(data,compressType,originalSize);
                         }
@@ -107,13 +112,13 @@ public interface HerculesManagerApi {
         return ForyUtils.deserialize(data, TaskFetchResult.class);
     }
 
-    @RequestLine("GET /taskDispatch/tryFetchTasksWithByteArray?executorRegion={executorRegion}&executorId={executorId}&fetchLimit={fetchLimit}&passSign={passSign}")
+    @RequestLine("GET /taskDispatch/tryFetchTasksWithByteArray?executorRegion={executorRegion}&executorId={executorId}&fetchLimit={fetchLimit}")
     @Headers("Content-Type: application/octet-stream")
     Response tryFetchTasksWithByteArray(
             @Param("executorRegion")String executorRegion,
             @Param("executorId")String executorId,
             @Param("fetchLimit")Integer fetchLimit,
-            @Param("passSign") String passSign
+            @HeaderMap Map<String,String> headers
     );
 
     /**
@@ -122,13 +127,13 @@ public interface HerculesManagerApi {
      * {@code data=false} (not an error) when the task is already claimed by
      * someone else. Prefer {@link #tryLockBatchTask} for the poll loop.
      */
-    @RequestLine("PUT /taskDispatch/tryLockOneTask?executorRegion={executorRegion}&executorId={executorId}&taskId={taskId}&passSign={passSign}")
+    @RequestLine("PUT /taskDispatch/tryLockOneTask?executorRegion={executorRegion}&executorId={executorId}&taskId={taskId}")
     @Headers("Content-Type: application/json;charset=UTF-8")
     BaseResponse<Boolean> tryLockOneTask(
             @Param("executorRegion")String executorRegion,
             @Param("executorId")String executorId,
             @Param("taskId")String taskId,
-            @Param("passSign") String passSign
+            @HeaderMap Map<String,String> headers
     );
 
     /**
@@ -138,35 +143,38 @@ public interface HerculesManagerApi {
      * a missing or non-{@link TaskInfoLockResult#SUCCESS} entry means the task
      * must be skipped. Drifted tasks are cancelled server-side.
      *
-     * @param lockRequest executor identity, region, signature and up to
+     * @param lockRequest executor identity, region, and up to
      *                    {@code Constant.BATCH_FETCH_MAX_SIZE} task ids
+     * @param headers    signing headers (op=LOCK, subject=sorted-id-list)
      */
     @RequestLine("PUT /taskDispatch/tryLockBatchTask")
     @Headers("Content-Type: application/json;charset=UTF-8")
     BaseResponse<BatchTaskLockProcessResult> tryLockBatchTask(
-            BatchLockRequest lockRequest
+            BatchLockRequest lockRequest,
+            @HeaderMap Map<String,String> headers
     );
 
     @RequestLine("PUT /taskDispatch/finishOneTask")
     @Headers("Content-Type: application/json;charset=UTF-8")
     BaseResponse<Boolean> finishOneTask(
-            FinishOneTaskRequestVO requestVO
+            FinishOneTaskRequestVO requestVO,
+            @HeaderMap Map<String,String> headers
     );
 
-    @RequestLine("PUT /taskDispatch/abandonOneTask?taskId={taskId}&executorId={executorId}&passSign={passSign}")
+    @RequestLine("PUT /taskDispatch/abandonOneTask?taskId={taskId}&executorId={executorId}")
     @Headers("Content-Type: application/json;charset=UTF-8")
     BaseResponse<Boolean> abandonOneTask(
             @Param("taskId")String taskId,
             @Param("executorId")String executorId,
-            @Param("passSign") String passSign
+            @HeaderMap Map<String,String> headers
     );
 
-    @RequestLine("PUT /taskDispatch/failOneTask?taskId={taskId}&executorId={executorId}&passSign={passSign}")
+    @RequestLine("PUT /taskDispatch/failOneTask?taskId={taskId}&executorId={executorId}")
     @Headers("Content-Type: application/json;charset=UTF-8")
     BaseResponse<Boolean> failOneTask(
             @Param("taskId")String taskId,
             @Param("executorId")String executorId,
-            @Param("passSign") String passSign
+            @HeaderMap Map<String,String> headers
     );
 
 }

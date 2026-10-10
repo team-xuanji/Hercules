@@ -17,8 +17,6 @@ public class BatchLockRequest {
     @NotBlank
     private String executorId;
     @NotBlank
-    private String passSign;
-    @NotBlank
     private String executorRegion;
     @NotNull
     @Size(max=BATCH_FETCH_MAX_SIZE)

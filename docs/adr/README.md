@@ -20,6 +20,7 @@ Status: Proposed | Accepted | Superseded by ADR-XXXX.
 | [0013](0013-binary-fetch-channel.md) | Binary fetch channel — Fory + ZSTD + AES-GCM fixed pipeline | Accepted |
 | [0014](0014-tiered-recover-tables.md) | Tiered recover tables for asynchronous task recovery | Accepted |
 | [0015](0015-recover-row-lifecycle.md) | Recover-row lifecycle — reuse-row recovery with outcome-bound deletion | Accepted |
+| [0016](0016-signed-request-headers.md) | Signed request headers — canonical message + timestamp window | Accepted |
 
 ## Convention
 

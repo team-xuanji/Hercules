@@ -385,7 +385,7 @@ public class ExecutorProcessHandleImpl implements ExecutorProcessHandle, Closeab
         BaseResponse<Boolean> result = managerApi.abandonOneTask(
                 taskInfo.getId(),
                 runnerEnv.getRunnerInstanceId(),
-                ExecutorInfoUtils.getExecutorSign(runnerEnv.getRunnerIdentityId(),taskInfo.getId(), ExecutorTaskOps.ABANDON)
+                ExecutorInfoUtils.signingHeaders(ExecutorTaskOps.ABANDON, taskInfo.getId())
         );
         if(result.getCode()!=200 || !Boolean.TRUE.equals(result.getData())){
             throw new RuntimeException(result.getMsg());
@@ -404,7 +404,7 @@ public class ExecutorProcessHandleImpl implements ExecutorProcessHandle, Closeab
         BaseResponse<Boolean> result = managerApi.failOneTask(
                 taskInfo.getId(),
                 runnerEnv.getRunnerInstanceId(),
-                ExecutorInfoUtils.getExecutorSign(runnerEnv.getRunnerIdentityId(),taskInfo.getId(), ExecutorTaskOps.FAIL));
+                ExecutorInfoUtils.signingHeaders(ExecutorTaskOps.FAIL, taskInfo.getId()));
         if(result.getCode()!=200 || !Boolean.TRUE.equals(result.getData())){
             throw new RuntimeException(result.getMsg());
         }
@@ -430,8 +430,8 @@ public class ExecutorProcessHandleImpl implements ExecutorProcessHandle, Closeab
         BaseResponse<Boolean> result = managerApi.finishOneTask(new FinishOneTaskRequestVO()
                 .setTaskId(taskExecutionContext.getId())
                 .setCheckPointInfo(taskExecutionContext.getCheckPointResult())
-                .setExecutorId(runnerEnv.getRunnerInstanceId())
-                .setPassSign(ExecutorInfoUtils.getExecutorSign(runnerEnv.getRunnerIdentityId(),taskExecutionContext.getId(), ExecutorTaskOps.FINISH))
+                .setExecutorId(runnerEnv.getRunnerInstanceId()),
+                ExecutorInfoUtils.signingHeaders(ExecutorTaskOps.FINISH, taskExecutionContext.getId())
         );
         if(result.getCode()!=200 || !Boolean.TRUE.equals(result.getData())){
             String msg = StrFormat.format("Can not set task status to success,error msg = [{}],current task status = [{}],task id = [{}]",result.getMsg(),taskInfo.getStatus(),taskInfo.getId());

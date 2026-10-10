@@ -15,7 +15,7 @@ Hercules Executor 采用**无状态、纯 HTTP 架构**进行所有任务管理�
 - **基于插件的执行**：动态插件加载与隔离执行环境
 
 ### HTTP API 操作：
-- `tryFetchTasksWithByteArray`：从管理器轮询可用任务（二进制载荷，使用配置的密钥加密；请求携带 `passSign` 签名；明文 `tryFetchTasks` 仅 QA 环境可用）
+- `tryFetchTasksWithByteArray`：从管理器轮询可用任务（二进制载荷，使用配置的密钥加密；请求通过 `X-Hercules-*` Header 携带 HMAC-SHA256 签名，覆盖操作+主题+时间戳+方法+路径+查询+请求体 SHA-256，5 分钟新鲜窗口，见 ADR-0016；明文 `tryFetchTasks` 仅 QA 环境可用）
 - `tryLockBatchTask`：一次签名请求批量锁定任务（上限 `BATCH_FETCH_MAX_SIZE`，200）
 - `tryLockOneTask`：锁定单个任务独占执行（批量端点的兼容 shim；跨分区拉取模式下使用）
 - `finishOneTask`：报告任务成功完成

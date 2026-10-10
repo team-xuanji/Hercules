@@ -15,7 +15,7 @@ The Hercules Executor follows a **stateless, HTTP-only architecture** for all ta
 - **Plugin-Based Execution**: Dynamic plugin loading with isolated execution environments
 
 ### HTTP API Operations:
-- `tryFetchTasksWithByteArray`: Poll for available tasks (binary payload, encrypted with the configured key; request signed with `passSign`; plaintext `tryFetchTasks` is QA-only)
+- `tryFetchTasksWithByteArray`: Poll for available tasks (binary payload, encrypted with the configured key; request signed via `X-Hercules-*` HMAC headers, see ADR-0016; plaintext `tryFetchTasks` is QA-only)
 - `tryLockBatchTask`: Lock a batch of tasks in one signed request (up to `BATCH_FETCH_MAX_SIZE`, 200)
 - `tryLockOneTask`: Lock a single task for exclusive execution (compatibility shim over the batch endpoint; used in cross-partition fetch mode)
 - `finishOneTask`: Report successful task completion
@@ -179,7 +179,7 @@ Seamless integration with Hercules Manager and external systems:
 
 ### Security Features:
 - Plugin classloader isolation
-- Signed operations: every task op (fetch/lock/finish/fail/abandon) carries a per-executor-instance HMAC signature (`passSign`)
+- Signed operations: every task op (fetch/lock/finish/fail/abandon) carries a per-executor HMAC-SHA256 signature in `X-Hercules-*` headers, covering the canonical message (op + subject + timestamp + method + path + query + SHA-256 of body) with a 5-minute freshness window (ADR-0016)
 - Secure resource downloading with validation
 - Environment-specific configuration isolation
 - Input validation and sanitization

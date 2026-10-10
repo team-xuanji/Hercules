@@ -750,7 +750,7 @@ The primary way to use Hercules is through direct interaction with the Manager m
 > - Locks tasks via `PUT /taskDispatch/tryLockBatchTask` (batch, up to 200; falls back to per-task `tryLockOneTask` in cross-partition fetch mode)
 > - Reports completion via `PUT /taskDispatch/finishOneTask`
 > - Reports failures via `PUT /taskDispatch/failOneTask`
-> - Signs every operation (including fetch) with a per-executor HMAC (`passSign`)
+> - Signs every operation (including fetch) with a per-executor HMAC over `X-Hercules-*` headers (op, subject, timestamp, query, body digest — see ADR-0016)
 > - No direct database access - all operations through RESTful APIs
 
 1. **Register Execution Plugins**

@@ -22,11 +22,11 @@ import team.magic.flute.hercules.manager.service.HerculesExecutorInfoService;
 import team.magic.flute.hercules.manager.service.HerculesExecutorTasksService;
 import team.magic.flute.hercules.manager.service.HerculesPluginManagerService;
 import team.magic.flute.hercules.manager.util.DTOConvertUtils;
-import team.magic.flute.hercules.common.http.BatchLockRequest;
-import team.magic.flute.hercules.common.http.BatchTaskLockProcessResult;
 import team.magic.flute.hercules.manager.vo.FinishOneTaskRequestVO;
 import team.magic.flute.hercules.manager.vo.PluginRegisterImplVO;
+import team.magic.flute.hercules.manager.web.CachedBodyFilter;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -38,6 +38,15 @@ import static team.magic.flute.hercules.common.global.Constant.*;
  * If the Executor itself cannot access any external infrastructure
  * (such as MQ or Database), it can use this set of interfaces to
  * obtain and execute tasks.
+ *
+ * <p>Every endpoint here is authenticated by the header-based signature
+ * protocol (ADR-0016): {@code X-Hercules-Op}/{@code X-Hercules-Subject} are
+ * read from the request, and {@code X-Hercules-Timestamp}/{@code X-Hercules-Signature}
+ * are checked against the canonical message built from the decoded query
+ * ({@link HttpServletRequest#getParameterMap()}) and the SHA-256 of the raw
+ * body ({@link CachedBodyFilter#RAW_BODY_ATTR}). Rejection is uniform
+ * ("Invalid executor identity signature.") so the endpoints do not act as
+ * oracles for which check a probe failed (ADR-0001).
  */
 @RestController
 @RequestMapping("/taskDispatch")
@@ -87,8 +96,8 @@ public class TaskDispatchController {
     public ResponseEntity<byte[]> tryFetchTasksWithByteArray(@RequestParam("executorId") String executorId,
                                                              @RequestParam("executorRegion") String executorRegion,
                                                              @RequestParam(value = "fetchLimit",required = false) Integer fetchLimit,
-                                                             @RequestParam("passSign") String passSign){
-        if (isInvalidExecutorOp(executorId,executorId,passSign,ExecutorTaskOps.FETCH,executorRegion)) {
+                                                             HttpServletRequest request){
+        if (isInvalidExecutorOp(request, executorId, executorRegion, ExecutorTaskOps.FETCH)) {
             return  ResponseEntity.badRequest()
                     .body("Invalid executor identity signature.".getBytes(StandardCharsets.UTF_8));
 
@@ -135,37 +144,33 @@ public class TaskDispatchController {
 
     @PutMapping("/tryLockOneTask")
     public BaseResponse<Boolean> tryLockOneTask(@RequestParam("executorId") String executorId,
-                                                @RequestParam("passSign") String passSign,
                                                 @RequestParam("executorRegion") String executorRegion,
-                                                @RequestParam("taskId") String taskId){
-        BaseResponse<BatchTaskLockProcessResult> processResult = tryLockBatchTask(new BatchLockRequest()
-                .setExecutorId(executorId)
-                .setExecutorRegion(executorRegion)
-                .setPassSign(passSign)
-                .setTaskIds(Lists.newArrayList(taskId)));
-        if(processResult.getCode()== EnumResponseType.SUCCESS.getCode() && processResult.getData()!=null){
-            BatchTaskLockProcessResult data = processResult.getData();
-            TaskInfoLockResult lockResult = data.getLockResults().get(taskId);
-            if (lockResult == null)
-                // This should not happen in theory, because there is no corresponding logic for the tryLockBatchTask method.
-                return BaseResponse.fail("Unknown Error!");
-            switch (lockResult){
-                case NOT_EXIST:
-                    return BaseResponse.fail(StrFormat.format("Task does not exist! TaskId = [{}]", taskId));
-                case PLUGIN_DRIFT:
-                    return BaseResponse.fail(StrFormat.format(
-                            "PLUGIN_DRIFTED: task [{}] cancelled, plugin handle not registered under its group.", taskId));
-                case NOT_CLAIMED:
-                    return BaseResponse.success(false);
-                case REGION_MISMATCH:
-                    return BaseResponse.fail(StrFormat.format("Region mismatch, task [{}] lock refused.", taskId));
-                case SUCCESS:
-                    return BaseResponse.success(true);
-                default:
-                    return BaseResponse.fail(StrFormat.format("Unexpected lock result [{}] for task [{}].", lockResult, taskId));
-            }
-        }else{
-            return BaseResponse.fail(processResult.getMsg());
+                                                @RequestParam("taskId") String taskId,
+                                                HttpServletRequest request){
+        if (isInvalidExecutorOp(request, executorId, executorRegion, ExecutorTaskOps.LOCK)) {
+            return BaseResponse.fail("Invalid executor identity signature.");
+        }
+        BatchTaskLockProcessResult data = doLockTasks(
+                Collections.singletonList(taskId), executorId, executorRegion);
+        TaskInfoLockResult lockResult = Optional.ofNullable(data.getLockResults())
+                .orElse(new HashMap<>()).get(taskId);
+        if (lockResult == null)
+            // This should not happen in theory, because there is no corresponding logic for the tryLockBatchTask method.
+            return BaseResponse.fail("Unknown Error!");
+        switch (lockResult){
+            case NOT_EXIST:
+                return BaseResponse.fail(StrFormat.format("Task does not exist! TaskId = [{}]", taskId));
+            case PLUGIN_DRIFT:
+                return BaseResponse.fail(StrFormat.format(
+                        "PLUGIN_DRIFTED: task [{}] cancelled, plugin handle not registered under its group.", taskId));
+            case NOT_CLAIMED:
+                return BaseResponse.success(false);
+            case REGION_MISMATCH:
+                return BaseResponse.fail(StrFormat.format("Region mismatch, task [{}] lock refused.", taskId));
+            case SUCCESS:
+                return BaseResponse.success(true);
+            default:
+                return BaseResponse.fail(StrFormat.format("Unexpected lock result [{}] for task [{}].", lockResult, taskId));
         }
     }
 
@@ -176,25 +181,42 @@ public class TaskDispatchController {
      * drifted from its group, and claims the remainder with a single
      * conditional UPDATE. One {@link TaskInfoLockResult} is reported per
      * requested id; a null {@code lockResults} map is only possible for an
-     * empty request. Signing scheme: ADR-0001.
+     * empty request. Signing scheme: ADR-0016.
      */
     @PutMapping("/tryLockBatchTask")
-    public BaseResponse<BatchTaskLockProcessResult> tryLockBatchTask(@Valid @RequestBody BatchLockRequest batchLockRequest){
-        boolean allSuccess = false;
+    public BaseResponse<BatchTaskLockProcessResult> tryLockBatchTask(@Valid @RequestBody BatchLockRequest batchLockRequest,
+                                                                     HttpServletRequest request){
         Set<String> taskIds = Optional.ofNullable(batchLockRequest.getTaskIds())
                 .orElse(new ArrayList<>())
                 .stream().filter(Objects::nonNull).collect(Collectors.toSet());
         if(taskIds.isEmpty()){
             log.info("taskIds is empty.");
             return BaseResponse.success(new BatchTaskLockProcessResult()
-                    .setAllSuccess(allSuccess));
+                    .setAllSuccess(false));
         }
         String executorId = batchLockRequest.getExecutorId();
-        String passSign = batchLockRequest.getPassSign();
         String executorRegion = batchLockRequest.getExecutorRegion();
-        String subject = ExecutorInfoUtils.buildSignSubject(batchLockRequest.getTaskIds());
-        if (isInvalidExecutorOp(executorId,subject,passSign,ExecutorTaskOps.LOCK,executorRegion)) {
+        if (isInvalidExecutorOp(request, executorId, executorRegion, ExecutorTaskOps.LOCK)) {
             return BaseResponse.fail("Invalid executor identity signature.");
+        }
+        return BaseResponse.success(doLockTasks(taskIds, executorId, executorRegion));
+    }
+
+    /**
+     * Core lock logic shared by the single and batch entry points. Assumes
+     * the signature has already been verified by the caller — it must not be
+     * called from anywhere that did not authenticate, because nothing else
+     * guards the conditional UPDATE below.
+     */
+    private BatchTaskLockProcessResult doLockTasks(Collection<String> requestedTaskIds,
+                                                                  String executorId,
+                                                                  String executorRegion){
+        boolean allSuccess = false;
+        Set<String> taskIds = requestedTaskIds.stream().filter(Objects::nonNull).collect(Collectors.toSet());
+        if(taskIds.isEmpty()){
+            log.info("taskIds is empty.");
+            return new BatchTaskLockProcessResult()
+                    .setAllSuccess(allSuccess);
         }
         List<HerculesTaskInfo> taskInfo = executorTasksService.list(new LambdaQueryWrapper<HerculesTaskInfo>()
                 .in(HerculesTaskInfo::getId, taskIds));
@@ -204,9 +226,9 @@ public class TaskDispatchController {
                 .filter(x->!missMatchTasks.containsKey(x.getId()))
                 .collect(Collectors.toList());
         if(inRegionTaskInfo.isEmpty()){
-            return BaseResponse.success(new BatchTaskLockProcessResult()
+            return new BatchTaskLockProcessResult()
                     .setAllSuccess(allSuccess)
-                    .setLockResults(tryLockResults));
+                    .setLockResults(tryLockResults);
         }
         Set<String> pluginDriftedTasks = cancelIfDriftedTask(inRegionTaskInfo);
         pluginDriftedTasks.forEach(id -> tryLockResults.put(id, TaskInfoLockResult.PLUGIN_DRIFT));
@@ -222,15 +244,16 @@ public class TaskDispatchController {
                 allSuccess = true;
             }
         }
-        return BaseResponse.success(new BatchTaskLockProcessResult()
+        return new BatchTaskLockProcessResult()
                 .setAllSuccess(allSuccess)
-                .setLockResults(tryLockResults));
+                .setLockResults(tryLockResults);
     }
 
 
     @PutMapping("/finishOneTask")
-    public BaseResponse<Boolean> finishOneTask(@Valid @RequestBody FinishOneTaskRequestVO requestVO){
-        if (isInvalidExecutorOp(requestVO.getExecutorId(),requestVO.getTaskId(),requestVO.getPassSign(),ExecutorTaskOps.FINISH,null)) {
+    public BaseResponse<Boolean> finishOneTask(@Valid @RequestBody FinishOneTaskRequestVO requestVO,
+                                               HttpServletRequest request){
+        if (isInvalidExecutorOp(request, requestVO.getExecutorId(), null, ExecutorTaskOps.FINISH)) {
             return BaseResponse.fail("Invalid executor identity signature.");
         }
         LambdaUpdateWrapper<HerculesTaskInfo> updateWrapper = new LambdaUpdateWrapper<HerculesTaskInfo>()
@@ -245,8 +268,8 @@ public class TaskDispatchController {
     @PutMapping("/abandonOneTask")
     public BaseResponse<Boolean> abandonOneTask(@RequestParam("executorId") String executorId,
                                                 @RequestParam("taskId") String taskId,
-                                                @RequestParam("passSign") String passSign){
-        if (isInvalidExecutorOp(executorId,taskId,passSign,ExecutorTaskOps.ABANDON,null)) {
+                                                HttpServletRequest request){
+        if (isInvalidExecutorOp(request, executorId, null, ExecutorTaskOps.ABANDON)) {
             return BaseResponse.fail("Invalid executor identity signature.");
         }
         LambdaUpdateWrapper<HerculesTaskInfo> updateWrapper = new LambdaUpdateWrapper<HerculesTaskInfo>()
@@ -262,8 +285,8 @@ public class TaskDispatchController {
     @PutMapping("/failOneTask")
     public BaseResponse<Boolean> failOneTask(@RequestParam("executorId") String executorId,
                                              @RequestParam("taskId") String taskId,
-                                             @RequestParam("passSign") String passSign){
-        if (isInvalidExecutorOp(executorId,taskId,passSign,ExecutorTaskOps.FAIL,null)) {
+                                             HttpServletRequest request){
+        if (isInvalidExecutorOp(request, executorId, null, ExecutorTaskOps.FAIL)) {
             return BaseResponse.fail("Invalid executor identity signature.");
         }
         HerculesTaskInfo taskInfo = executorTasksService.getById(taskId);
@@ -280,40 +303,82 @@ public class TaskDispatchController {
     }
 
     /**
-     * Region check semantics: an executor's region is fixed at deployment and
-     * immutable for the instance's lifetime — a restart mints a new executorId
-     * and identityId and re-registers. This check binds operations to the region
-     * the instance was deployed as. Who may deploy an executor as region X is
-     * governed by config management / infra, same division as the admin plane.
+     * Authenticate a signed executor operation against the header-based
+     * signature protocol (ADR-0016). The {@code subject} is read from the
+     * {@code X-Hercules-Subject} header (executorId for FETCH, taskId for the
+     * single ops, the sorted id list for batch lock). {@code op} is the
+     * endpoint's expected operation; the client's OP header must carry the
+     * same value (the canonical message uses it, so a mismatch makes the
+     * signature unverifiable). {@code executorRegion} follows the existing
+     * semantics: a non-blank value is checked against the executor's registered
+     * region (FETCH, single/batch LOCK); null skips the check
+     * (ABANDON/FAIL/FINISH).
      *
-     * <p>{@code subject} is the operation subject the signature is bound to:
-     * the taskId for task ops, the executorId for FETCH (which has no task).
-     * It is logged as "subject" rather than "task" so fetch rejections are not
-     * misread.
+     * <p>Rejection responses are uniform ("Invalid executor identity
+     * signature.") with reasons logged server-side under
+     * {@code [INVALID_EXECUTOR_OP]} — the endpoints must not act as oracles
+     * for which check a probe failed (ADR-0001).
      */
-    private boolean isInvalidExecutorOp(String executorId,
-                                        String subject,
-                                        String passSign,
-                                        ExecutorTaskOps ops,
-                                        String executorRegion){
+    private boolean isInvalidExecutorOp(HttpServletRequest request,
+                                        String executorId,
+                                        String executorRegion,
+                                        ExecutorTaskOps op) {
         HerculesExecutorInfo executor = executorInfoService.getById(executorId);
         if (executor == null) {
-            log.warn("[INVALID_EXECUTOR_OP] Unknown executor [{}] attempted op [{}] subject [{}].",
-                    executorId, ops, subject);
+            log.warn("[INVALID_EXECUTOR_OP] Unknown executor [{}] attempted op [{}].",
+                    executorId, op);
             return true;
         }
         if (StringUtils.isNotBlank(executorRegion)
                 && !Objects.equals(executor.getExecutorRegion(), executorRegion)) {
-            log.warn("[INVALID_EXECUTOR_OP] Region mismatch: executor [{}] registered in [{}], claimed [{}], op [{}], subject [{}].",
-                    executorId, executor.getExecutorRegion(), executorRegion, ops, subject);
+            log.warn("[INVALID_EXECUTOR_OP] Region mismatch: executor [{}] registered in [{}], claimed [{}], op [{}].",
+                    executorId, executor.getExecutorRegion(), executorRegion, op);
             return true;
         }
-        if (!ExecutorInfoUtils.verifyExecutorSign(executor.getIdentityId(), subject, ops, passSign)) {
+        String headerOp = header(request, ExecutorInfoUtils.HEADER_OP);
+        String subject = header(request, ExecutorInfoUtils.HEADER_SUBJECT);
+        String timestamp = header(request, ExecutorInfoUtils.HEADER_TIMESTAMP);
+        String signature = header(request, ExecutorInfoUtils.HEADER_SIGNATURE);
+        if (StringUtils.isBlank(headerOp) || StringUtils.isBlank(subject)
+                || StringUtils.isBlank(timestamp) || StringUtils.isBlank(signature)) {
+            log.warn("[INVALID_EXECUTOR_OP] Missing signing header(s): executor [{}], op [{}].",
+                    executorId, op);
+            return true;
+        }
+        // The OP header must match the endpoint's expected op — otherwise the
+        // client signed a different canonical than the server will verify.
+        if (!headerOp.equals(op.name())) {
+            log.warn("[INVALID_EXECUTOR_OP] Op header [{}] does not match expected [{}]: executor [{}].",
+                    headerOp, op, executorId);
+            return true;
+        }
+        if (!ExecutorInfoUtils.isFreshTimestamp(timestamp, System.currentTimeMillis())) {
+            log.warn("[INVALID_EXECUTOR_OP] Stale/unparseable timestamp: executor [{}], op [{}].",
+                    executorId, op);
+            return true;
+        }
+        String canonicalQuery = ExecutorInfoUtils.canonicalQuery(request.getParameterMap());
+        byte[] rawBody = (byte[]) request.getAttribute(CachedBodyFilter.RAW_BODY_ATTR);
+        String bodySha = ExecutorInfoUtils.bodySha(rawBody);
+        if (!ExecutorInfoUtils.verifyRequest(
+                executor.getIdentityId(), op.name(), subject, timestamp,
+                canonicalQuery, bodySha, signature)) {
             log.warn("[INVALID_EXECUTOR_OP] Signature verification failed: executor [{}], op [{}], subject [{}].",
-                    executorId, ops, subject);
+                    executorId, op, subject);
             return true;
         }
         return false;
+    }
+
+    /** Case-insensitive single-value header read; null/blank-tolerant. */
+    private static String header(HttpServletRequest request, String name) {
+        String value = request.getHeader(name);
+        if (value == null || value.isEmpty()) {
+            // Header names are case-insensitive per the servlet spec, but be
+            // defensive: getHeader already normalizes, so this is belt-and-braces.
+            return null;
+        }
+        return value;
     }
 
     private Set<String> cancelIfDriftedTask(List<HerculesTaskInfo> inRegionTaskInfo){
@@ -399,7 +464,7 @@ public class TaskDispatchController {
      * being reset by dead-task recovery in between) can only yield a
      * pessimistic NOT_CLAIMED — a safe outcome for callers to retry.
      */
-    private Map<String, TaskInfoLockResult> lockBatchTask(Set<String> taskIds,String executorRegion,String executorId) {
+    private Map<String,TaskInfoLockResult> lockBatchTask(Set<String> taskIds,String executorRegion,String executorId) {
         Map<String, TaskInfoLockResult> lockResults = new HashMap<>();
         Set<String> correctTaskIds = new HashSet<>(taskIds);
         LambdaUpdateWrapper<HerculesTaskInfo> updateWrapper = new LambdaUpdateWrapper<HerculesTaskInfo>()
