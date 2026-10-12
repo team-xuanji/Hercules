@@ -1,11 +1,10 @@
 package team.magic.flute.hercules.executor.feign;
 
-import team.magic.flute.hercules.executor.feign.bean.FeignConfigBean;
 import feign.Contract;
 import feign.Feign;
 import feign.Logger;
 import feign.Retryer;
-
+import team.magic.flute.hercules.executor.feign.bean.FeignConfigBean;
 
 public class FeignUtils {
     public static Feign.Builder getDefaultBuilder(FeignConfigBean feignConfigBean) {

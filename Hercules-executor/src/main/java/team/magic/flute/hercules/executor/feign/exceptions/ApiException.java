@@ -1,9 +1,8 @@
 package team.magic.flute.hercules.executor.feign.exceptions;
 
+public class ApiException extends RuntimeException {
 
-public class ApiException  extends RuntimeException{
-
-    final static String DEFAULT_MSG = "Oops, something wrong.";
+    static final String DEFAULT_MSG = "Oops, something wrong.";
 
     private FailResult failResult;
 
@@ -15,19 +14,17 @@ public class ApiException  extends RuntimeException{
         super(message);
     }
 
-    public ApiException(final String message , FailResult failResult) {
+    public ApiException(final String message, FailResult failResult) {
         super(message);
         this.failResult = failResult;
     }
 
-    public ApiException(FailResult failResult,String message, Throwable cause)
-    {
+    public ApiException(FailResult failResult, String message, Throwable cause) {
         super(message, cause);
-        this.failResult = failResult ;
+        this.failResult = failResult;
     }
 
     public FailResult getFailResult() {
         return failResult;
     }
-
 }

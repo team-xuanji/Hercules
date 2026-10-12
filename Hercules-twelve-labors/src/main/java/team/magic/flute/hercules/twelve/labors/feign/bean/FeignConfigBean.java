@@ -6,8 +6,8 @@ import lombok.experimental.Accessors;
 /**
  * Feign Configuration Bean for Business Access Gateway
  *
- * <p>Configuration bean containing retry and timeout parameters for Feign
- * HTTP clients within the Hercules business access gateway.
+ * <p>Configuration bean containing retry and timeout parameters for Feign HTTP clients within the
+ * Hercules business access gateway.
  *
  * @author Hercules Team
  * @version 1.0

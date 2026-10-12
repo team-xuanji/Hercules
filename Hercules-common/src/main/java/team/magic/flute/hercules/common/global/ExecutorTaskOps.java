@@ -1,5 +1,11 @@
 package team.magic.flute.hercules.common.global;
 
 public enum ExecutorTaskOps {
-    LOCK, FINISH, FAIL, ABANDON, FETCH, FORWARD, PROCESS
+    LOCK,
+    FINISH,
+    FAIL,
+    ABANDON,
+    FETCH,
+    FORWARD,
+    PROCESS
 }

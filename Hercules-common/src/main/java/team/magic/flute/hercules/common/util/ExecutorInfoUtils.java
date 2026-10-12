@@ -1,8 +1,5 @@
 package team.magic.flute.hercules.common.util;
 
-import team.magic.flute.hercules.common.global.ExecutorTaskOps;
-
-import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -12,21 +9,23 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import team.magic.flute.hercules.common.global.ExecutorTaskOps;
 
 /**
  * Executor operation signing utilities.
  *
- * <p>Every mutating executor→manager operation (and the task fetch) is signed
- * with HMAC-SHA256 over a canonical message that covers the operation, subject,
- * timestamp, decoded query string and the SHA-256 of the raw wire body. The
- * signature, timestamp, op and subject travel in four {@code X-Hercules-*}
- * headers; the signing key is the executor's {@code identityId} (ADR-0016).
+ * <p>Every mutating executor→manager operation (and the task fetch) is signed with HMAC-SHA256 over
+ * a canonical message that covers the operation, subject, timestamp, decoded query string and the
+ * SHA-256 of the raw wire body. The signature, timestamp, op and subject travel in four {@code
+ * X-Hercules-*} headers; the signing key is the executor's {@code identityId} (ADR-0016).
  *
  * <p>The canonical message is the five fields below joined with {@code "\n"}:
+ *
  * <pre>
  *   OP + "\n" + SUBJECT + "\n" + TIMESTAMP + "\n"
  *       + CANONICAL_QUERY + "\n" + SHA256_HEX(BODY)
  * </pre>
+ *
  * Client and server MUST build this byte-for-byte identically.
  */
 public class ExecutorInfoUtils {
@@ -44,13 +43,12 @@ public class ExecutorInfoUtils {
     private ExecutorInfoUtils() {}
 
     /**
-     * SHA-256 of the raw wire body, lowercase hexadecimal. Used both as the
-     * body digest inside the canonical message and nowhere else — the HMAC
-     * itself is over the canonical message string, not the body directly.
+     * SHA-256 of the raw wire body, lowercase hexadecimal. Used both as the body digest inside the
+     * canonical message and nowhere else — the HMAC itself is over the canonical message string,
+     * not the body directly.
      *
-     * @param body raw bytes; null/empty yields the empty digest of nothing
-     *             (which the protocol represents as the literal "" — see
-     *             {@link #bodySha(byte[])})
+     * @param body raw bytes; null/empty yields the empty digest of nothing (which the protocol
+     *     represents as the literal "" — see {@link #bodySha(byte[])})
      */
     public static String sha256Hex(byte[] body) {
         try {
@@ -62,8 +60,8 @@ public class ExecutorInfoUtils {
     }
 
     /**
-     * Body digest for the canonical message: empty string when there is no
-     * body (GET / no-content PUT), otherwise {@link #sha256Hex(byte[])}.
+     * Body digest for the canonical message: empty string when there is no body (GET / no-content
+     * PUT), otherwise {@link #sha256Hex(byte[])}.
      */
     public static String bodySha(byte[] body) {
         if (body == null || body.length == 0) {
@@ -73,18 +71,16 @@ public class ExecutorInfoUtils {
     }
 
     /**
-     * Canonical query string over <em>decoded</em> parameter values. Entries
-     * are sorted by parameter name ascending; within the same name, values are
-     * sorted by string ascending. Each entry is emitted as {@code name=value}
-     * and joined with {@code &amp;}. No percent-encoding is applied — the
-     * inputs are already decoded, so re-encoding would diverge between signer
-     * and verifier. An empty parameter set yields "".
+     * Canonical query string over <em>decoded</em> parameter values. Entries are sorted by
+     * parameter name ascending; within the same name, values are sorted by string ascending. Each
+     * entry is emitted as {@code name=value} and joined with {@code &amp;}. No percent-encoding is
+     * applied — the inputs are already decoded, so re-encoding would diverge between signer and
+     * verifier. An empty parameter set yields "".
      *
-     * @param queries decoded parameters; on the client from
-     *                {@code RequestTemplate.queries()} (a
-     *                {@code Map<String, Collection<String>>}), on the server
-     *                from {@code HttpServletRequest.getParameterMap()} (a
-     *                {@code Map<String, String[]>}). Both shapes are accepted.
+     * @param queries decoded parameters; on the client from {@code RequestTemplate.queries()} (a
+     *     {@code Map<String, Collection<String>>}), on the server from {@code
+     *     HttpServletRequest.getParameterMap()} (a {@code Map<String, String[]>}). Both shapes are
+     *     accepted.
      */
     public static String canonicalQuery(Map<String, ?> queries) {
         if (queries == null || queries.isEmpty()) {
@@ -107,12 +103,10 @@ public class ExecutorInfoUtils {
     }
 
     /**
-     * Adapt the value of a parameter map entry — which may be a
-     * {@code Collection<String>} (feign), a {@code String[]} (servlet), a
-     * single {@code String}, or null — into a flat list of strings. The server
-     * side never sees the same collection type as the feign client, so this is
-     * the single point where both shapes converge on the canonical
-     * representation.
+     * Adapt the value of a parameter map entry — which may be a {@code Collection<String>} (feign),
+     * a {@code String[]} (servlet), a single {@code String}, or null — into a flat list of strings.
+     * The server side never sees the same collection type as the feign client, so this is the
+     * single point where both shapes converge on the canonical representation.
      */
     private static List<String> toStringList(Object value) {
         if (value == null) {
@@ -136,28 +130,19 @@ public class ExecutorInfoUtils {
     }
 
     /**
-     * Assemble the canonical message string. Single definition shared by
-     * {@link #signRequest} and {@link #verifyRequest} so signer and verifier
-     * cannot drift.
+     * Assemble the canonical message string. Single definition shared by {@link #signRequest} and
+     * {@link #verifyRequest} so signer and verifier cannot drift.
      */
-    public static String buildCanonicalMessage(String op,
-                                                String subject,
-                                                String timestamp,
-                                                String canonicalQuery,
-                                                String bodySha) {
-        return op + "\n"
-                + subject + "\n"
-                + timestamp + "\n"
-                + canonicalQuery + "\n"
-                + bodySha;
+    public static String buildCanonicalMessage(
+            String op, String subject, String timestamp, String canonicalQuery, String bodySha) {
+        return op + "\n" + subject + "\n" + timestamp + "\n" + canonicalQuery + "\n" + bodySha;
     }
 
     /**
-     * The two headers the caller sets on every signed request (op + subject).
-     * The {@link ExecutorInfoUtils#HEADER_TIMESTAMP timestamp} and
-     * {@link ExecutorInfoUtils#HEADER_SIGNATURE signature} are added by the
-     * signing interceptor, not the caller, because the timestamp must be fresh
-     * at send time and the signature depends on it.
+     * The two headers the caller sets on every signed request (op + subject). The {@link
+     * ExecutorInfoUtils#HEADER_TIMESTAMP timestamp} and {@link ExecutorInfoUtils#HEADER_SIGNATURE
+     * signature} are added by the signing interceptor, not the caller, because the timestamp must
+     * be fresh at send time and the signature depends on it.
      */
     public static Map<String, String> signingHeaders(ExecutorTaskOps op, String subject) {
         Map<String, String> headers = new HashMap<>();
@@ -167,31 +152,32 @@ public class ExecutorInfoUtils {
     }
 
     /**
-     * Compute the request signature (lowercase hex HMAC-SHA256) over the
-     * canonical message. The signing key is the executor's
-     * {@code identityId}.
+     * Compute the request signature (lowercase hex HMAC-SHA256) over the canonical message. The
+     * signing key is the executor's {@code identityId}.
      */
-    public static String signRequest(String identityId,
-                                     String op,
-                                     String subject,
-                                     String timestamp,
-                                     String canonicalQuery,
-                                     String bodySha) {
+    public static String signRequest(
+            String identityId,
+            String op,
+            String subject,
+            String timestamp,
+            String canonicalQuery,
+            String bodySha) {
         String msg = buildCanonicalMessage(op, subject, timestamp, canonicalQuery, bodySha);
         return HmacUtils.hmacSha256Hex(identityId, msg);
     }
 
     /**
-     * Verify a presented signature against the canonical message, in constant
-     * time. A null/blank presented signature is rejected without computing.
+     * Verify a presented signature against the canonical message, in constant time. A null/blank
+     * presented signature is rejected without computing.
      */
-    public static boolean verifyRequest(String identityId,
-                                        String op,
-                                        String subject,
-                                        String timestamp,
-                                        String canonicalQuery,
-                                        String bodySha,
-                                        String presentedSign) {
+    public static boolean verifyRequest(
+            String identityId,
+            String op,
+            String subject,
+            String timestamp,
+            String canonicalQuery,
+            String bodySha,
+            String presentedSign) {
         if (presentedSign == null || presentedSign.isEmpty()) {
             return false;
         }
@@ -200,10 +186,9 @@ public class ExecutorInfoUtils {
     }
 
     /**
-     * @param ts     epoch-millis string from the {@code X-Hercules-Timestamp} header
-     * @param nowMs  the server's current epoch millis
-     * @return true iff ts parses as a long and |now - ts| &lt;=
-     *         {@link #FRESHNESS_WINDOW_MS}
+     * @param ts epoch-millis string from the {@code X-Hercules-Timestamp} header
+     * @param nowMs the server's current epoch millis
+     * @return true iff ts parses as a long and |now - ts| &lt;= {@link #FRESHNESS_WINDOW_MS}
      */
     public static boolean isFreshTimestamp(String ts, long nowMs) {
         if (ts == null || ts.isEmpty()) {
@@ -223,9 +208,9 @@ public class ExecutorInfoUtils {
     /**
      * Build the canonical signed subject for a batch operation.
      *
-     * <p>The ids are sorted before joining, so the signature depends on the id
-     * <em>set</em>, not the order — signer and verifier may collect the ids in
-     * any order and still produce the same subject.
+     * <p>The ids are sorted before joining, so the signature depends on the id <em>set</em>, not
+     * the order — signer and verifier may collect the ids in any order and still produce the same
+     * subject.
      *
      * @param ids task ids to sign; nulls are dropped
      * @return the comma-joined, sorted id list
@@ -235,7 +220,8 @@ public class ExecutorInfoUtils {
         if (ids == null) {
             throw new IllegalArgumentException("[CAN NOT BUILD SIGN]:ids is null");
         }
-        String joined = ids.stream().filter(Objects::nonNull).sorted().collect(Collectors.joining(","));
+        String joined =
+                ids.stream().filter(Objects::nonNull).sorted().collect(Collectors.joining(","));
         if (joined.isEmpty()) {
             throw new IllegalArgumentException("[CAN NOT BUILD SIGN]:ids is empty");
         }
@@ -251,5 +237,4 @@ public class ExecutorInfoUtils {
         }
         return new String(out);
     }
-
 }

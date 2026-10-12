@@ -6,8 +6,8 @@
 ![heracles_logo.png](heracles_logo.png)
 
 [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE)
-[![Java](https://img.shields.io/badge/Java-8+-orange.svg)](https://openjdk.java.net/)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-2.7+-green.svg)](https://spring.io/projects/spring-boot)
+[![Java](https://img.shields.io/badge/Java-17-orange.svg)](https://openjdk.java.net/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.1-green.svg)](https://spring.io/projects/spring-boot)
 [![DuckDB](https://img.shields.io/badge/DuckDB-集成-yellow.svg)](https://duckdb.org/)
 
 ## 📚 文档导航
@@ -455,13 +455,13 @@ Hercules采用模块化的微服务架构，专为可扩展性和可维护性而
 
 ### 环境要求
 
-- **Java 8+**: 运行所有Hercules服务的必需环境 (支持JDK 8, 11, 17+)
+- **Java 17**: 运行所有Hercules服务的必需环境 (Spring Boot 4.1.1 不再支持 JDK 8/11)
 - **Maven 3.6+**: 从源码构建项目
 - **MySQL 8.0+**: 任务管理和系统状态数据库
 - **对象存储**: OSS (阿里云) 或 S3 (AWS) 用于插件和文件存储
 - **(可选) Docker & Docker Compose**: 用于容器化部署
 
-> **注意**: 项目支持JDK 8+，已升级Spring Boot版本。经过测试，兼容JDK 8、11和17+。
+> **注意**: 基于 Eclipse Temurin JDK 17 (LTS) 构建与测试；Spring Boot 4.1.1 仅要求 JDK 17。
 
 > **重要说明**: 当前版本使用MySQL表作为任务消息转发的存储介质。这提供了可靠的任务分发机制，无需额外的消息队列基础设施。未来版本将支持可扩展的消息分发介质（Redis、RabbitMQ等）。
 
@@ -549,7 +549,7 @@ docker build -t hercules-twelve-labors:latest -f Hercules-twelve-labors/Dockerfi
 3. **构建过程中内存问题**
    ```bash
    # 增加Maven内存
-   export MAVEN_OPTS="-Xmx2g -XX:MaxPermSize=512m"
+   export MAVEN_OPTS="-Xmx2g -XX:MaxRAMPercentage=50.0"
    mvn clean package -Dmaven.test.skip=true
    ```
 

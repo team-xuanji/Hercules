@@ -10,6 +10,7 @@ import org.apache.commons.lang3.StringUtils;
  * clients can reliably parse and handle.
  *
  * <p>Response Structure:
+ *
  * <pre>{@code
  * {
  *   "code": 200,           // HTTP-like status code
@@ -19,6 +20,7 @@ import org.apache.commons.lang3.StringUtils;
  * }</pre>
  *
  * <p>Common usage patterns:
+ *
  * <pre>{@code
  * // Success with data
  * return BaseResponse.success(userData);
@@ -33,37 +35,30 @@ import org.apache.commons.lang3.StringUtils;
  * return BaseResponse.send(EnumResponseType.ARGUMENT_NOT_VALID);
  * }</pre>
  *
- * <p>The class supports method chaining for convenient response building and
- * provides type safety through generics for the data payload.
+ * <p>The class supports method chaining for convenient response building and provides type safety
+ * through generics for the data payload.
  *
  * @param <T> the type of the response data payload
- *
  * @author Hercules Team
  * @version 1.0
  * @since 1.0
  */
 public class BaseResponse<T> {
     /**
-     * Response status code (HTTP-like).
-     * Typically, 200 for success, 300+ for client errors, 500+ for server errors.
+     * Response status code (HTTP-like). Typically, 200 for success, 300+ for client errors, 500+
+     * for server errors.
      */
     private int code;
 
-    /**
-     * Human-readable response message.
-     * Provides additional context about the response status.
-     */
+    /** Human-readable response message. Provides additional context about the response status. */
     private String msg;
 
-    /**
-     * Response data payload.
-     * Contains the actual response data when applicable.
-     */
+    /** Response data payload. Contains the actual response data when applicable. */
     private T data;
 
     /**
-     * Default constructor creating a successful response.
-     * Sets code to 200 and message to "success".
+     * Default constructor creating a successful response. Sets code to 200 and message to
+     * "success".
      */
     public BaseResponse() {
         this.code = EnumResponseType.SUCCESS.getCode();

@@ -1,41 +1,33 @@
 package team.magic.flute.hercules.common.http;
 
-import lombok.ToString;
-
 import java.util.ArrayList;
 import java.util.List;
-
+import lombok.ToString;
 
 @ToString
 public class PageData<T> {
 
-    public final static Integer DEFAULT_PAGE_NUMBER = 1;
-    public final static Integer DEFAULT_PAGE_SIZE = 20;
-    public final static Long DEFAULT_TOTAL = 0L;
+    public static final Integer DEFAULT_PAGE_NUMBER = 1;
+    public static final Integer DEFAULT_PAGE_SIZE = 20;
+    public static final Long DEFAULT_TOTAL = 0L;
 
-    /**
-     * current-page [1, Integer.MAX)
-     */
+    /** current-page [1, Integer.MAX) */
     private Integer page;
-    /**
-     * current-page-size
-     */
+
+    /** current-page-size */
     private Integer size;
-    /**
-     * total-page-num
-     */
+
+    /** total-page-num */
     private Integer totalPage;
-    /**
-     * total-data-num
-     */
+
+    /** total-data-num */
     private Long total;
 
     private List<T> list;
 
     private Long offset;
 
-    public PageData() {
-    }
+    public PageData() {}
 
     public PageData(Integer page, Integer size, Long total, List<T> list) {
         this.page = page;
@@ -118,4 +110,3 @@ public class PageData<T> {
         return this;
     }
 }
-

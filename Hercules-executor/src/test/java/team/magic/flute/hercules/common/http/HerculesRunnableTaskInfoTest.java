@@ -1,24 +1,21 @@
 package team.magic.flute.hercules.common.http;
 
-import org.junit.jupiter.api.Test;
-import team.magic.flute.hercules.common.status.TaskType;
-
-import java.util.HashSet;
-import java.util.Set;
-import java.util.regex.Pattern;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.HashSet;
+import java.util.Set;
+import java.util.regex.Pattern;
+import org.junit.jupiter.api.Test;
+import team.magic.flute.hercules.common.status.TaskType;
+
 /**
- * Pure unit tests for {@link HerculesRunnableTaskInfo#buildDefaultUniId}. No
- * Spring context, no DB. The forward chain
- * ({@code ExecutorProcessHandleImpl.tryForwardTask}) relies on this method to
- * mint a collision-free id when a forwarded task arrives without one; these
- * tests pin the determinism and component-sensitivity invariants that contract
- * depends on.
+ * Pure unit tests for {@link HerculesRunnableTaskInfo#buildDefaultUniId}. No Spring context, no DB.
+ * The forward chain ({@code ExecutorProcessHandleImpl.tryForwardTask}) relies on this method to
+ * mint a collision-free id when a forwarded task arrives without one; these tests pin the
+ * determinism and component-sensitivity invariants that contract depends on.
  */
 class HerculesRunnableTaskInfoTest {
 
@@ -38,7 +35,8 @@ class HerculesRunnableTaskInfoTest {
     void yieldsValidMd5Hex() {
         String id = base().buildDefaultUniId();
         assertNotNull(id);
-        assertTrue(MD5_HEX.matcher(id).matches(), "default uni id must be a 32-char md5 hex: " + id);
+        assertTrue(
+                MD5_HEX.matcher(id).matches(), "default uni id must be a 32-char md5 hex: " + id);
     }
 
     @Test
@@ -50,25 +48,26 @@ class HerculesRunnableTaskInfoTest {
 
     @Test
     void sensitiveToPluginHandle() {
-        assertNotEquals(base().buildDefaultUniId(),
-                base().setPluginHandle("handle-2").buildDefaultUniId());
+        assertNotEquals(
+                base().buildDefaultUniId(), base().setPluginHandle("handle-2").buildDefaultUniId());
     }
 
     @Test
     void sensitiveToPluginGroup() {
-        assertNotEquals(base().buildDefaultUniId(),
-                base().setPluginGroup("group-2").buildDefaultUniId());
+        assertNotEquals(
+                base().buildDefaultUniId(), base().setPluginGroup("group-2").buildDefaultUniId());
     }
 
     @Test
     void sensitiveToContext() {
-        assertNotEquals(base().buildDefaultUniId(),
-                base().setContext("different-ctx").buildDefaultUniId());
+        assertNotEquals(
+                base().buildDefaultUniId(), base().setContext("different-ctx").buildDefaultUniId());
     }
 
     @Test
     void sensitiveToExecutorRegion() {
-        assertNotEquals(base().buildDefaultUniId(),
+        assertNotEquals(
+                base().buildDefaultUniId(),
                 base().setExecutorRegion("region-2").buildDefaultUniId());
     }
 
@@ -76,14 +75,15 @@ class HerculesRunnableTaskInfoTest {
     void sensitiveToFromType() {
         // ONCE vs FORWARD must yield different ids — the fromType encodes the
         // dispatch lane and cannot collapse with other task types.
-        assertNotEquals(base().setFromType(TaskType.ONCE).buildDefaultUniId(),
+        assertNotEquals(
+                base().setFromType(TaskType.ONCE).buildDefaultUniId(),
                 base().setFromType(TaskType.FORWARD).buildDefaultUniId());
     }
 
     @Test
     void sensitiveToFromSourceId() {
-        assertNotEquals(base().buildDefaultUniId(),
-                base().setFromSourceId("parent-2").buildDefaultUniId());
+        assertNotEquals(
+                base().buildDefaultUniId(), base().setFromSourceId("parent-2").buildDefaultUniId());
     }
 
     @Test
@@ -92,9 +92,13 @@ class HerculesRunnableTaskInfoTest {
         // over distinct (context, fromSourceId) pairs must not collide in practice.
         Set<String> ids = new HashSet<>();
         for (int i = 0; i < 500; i++) {
-            ids.add(base().setFromSourceId("parent-" + i).setContext("ctx-" + i).buildDefaultUniId());
+            ids.add(
+                    base().setFromSourceId("parent-" + i)
+                            .setContext("ctx-" + i)
+                            .buildDefaultUniId());
         }
-        assertEquals(500, ids.size(), "default uni ids must be collision-free across distinct forwards");
+        assertEquals(
+                500, ids.size(), "default uni ids must be collision-free across distinct forwards");
     }
 
     @Test

@@ -5,7 +5,7 @@ This guide provides detailed instructions for building the Hercules distributed 
 ## Prerequisites
 
 ### Required Software
-- **Java 8+**: OpenJDK or Oracle JDK (JDK 8, 11, 17+ all supported)
+- **Java 17+**: Eclipse Temurin / OpenJDK / Oracle JDK (JDK 17 LTS required by Spring Boot 4.1.1)
 - **Maven 3.6+**: Build automation tool
 - **Git**: Version control system
 
@@ -20,40 +20,36 @@ This guide provides detailed instructions for building the Hercules distributed 
 
 ### JDK Version Support
 
-#### Supported Versions: JDK 8+
-The project supports JDK 8+ with upgraded Spring Boot version. Tested and compatible with:
-- **JDK 8**: Fully supported (minimum requirement)
-- **JDK 11**: Fully supported and recommended for production
-- **JDK 17+**: Fully supported with current Spring Boot version
+#### Supported Versions: JDK 17 (required)
+The project now requires **JDK 17** (the upgrade to Spring Boot 4.1.1 dropped JDK 8/11 support). Tested and compatible with:
+- **JDK 17**: Required, fully supported with the current Spring Boot version
+- **JDK 21+**: Should work (Spring Boot 4.1.1 supports JDK 17/21); verify before adopting
 
 #### Version Recommendations
 ```bash
 # Development
-JDK 8 or 11 - Stable and widely used
+JDK 17 - LTS, used by every developer and CI build
 
 # Production
-JDK 11 or 17 - Long-term support versions with better performance
+JDK 17 - LTS, container-aware (Eclipse Temurin 17 JRE is the official base image)
 
 # Latest Features
-JDK 17+ - Latest features and optimizations
+JDK 21+ - Latest features and optimizations (verify Spring Boot 4.1.1 compatibility first)
 ```
 
-**Note**: The Spring Boot version has been upgraded to support modern JDK versions while maintaining backward compatibility with JDK 8.
+**Note**: Spring Boot 4.1.1 requires JDK 17. Older JDKs (8, 11) are no longer supported.
 
 #### JDK Selection Guide
 
 **For Development:**
-- **JDK 8**: Minimum requirement, good for legacy compatibility testing
-- **JDK 11**: Recommended for most development work (LTS version)
-- **JDK 17**: Latest LTS, best performance and features
+- **JDK 17**: Required baseline for all development (LTS version)
+- **JDK 21+**: OK for exploring newer language features
 
 **For Production:**
-- **JDK 11**: Stable LTS version, widely adopted
-- **JDK 17**: Latest LTS, better performance, recommended for new deployments
+- **JDK 17**: LTS, recommended for new deployments
 
 **For CI/CD:**
-- Test with JDK 8 to ensure backward compatibility
-- Build and deploy with JDK 11 or 17 for optimal performance
+- Build with JDK 17 (the only required target)
 
 ## Project Structure
 
@@ -80,7 +76,7 @@ cd hercules
 ### 2. Verify Prerequisites
 
 ```bash
-# Check Java version (should be 8+)
+# Check Java version (should be 17+)
 java -version
 javac -version
 
@@ -177,7 +173,7 @@ docker-compose build hercules-manager
 
 #### IntelliJ IDEA
 1. Import project as Maven project
-2. Set Project SDK to Java 17+
+2. Set Project SDK to Java 17 (required by Spring Boot 4.1.1)
 3. Enable annotation processing
 4. Configure code style (optional)
 
@@ -220,14 +216,14 @@ mvn clean install -DskipTests
 
 #### 2. Java Version Issues
 ```bash
-# Check Java version (should be 8+)
+# Check Java version (should be 17+)
 java -version
 
 # Set JAVA_HOME (Linux/Mac)
-export JAVA_HOME=/path/to/java8  # or java11, java17, etc.
+export JAVA_HOME=/path/to/java17   # or java21, etc.
 
 # Set JAVA_HOME (Windows)
-set JAVA_HOME=C:\path\to\java8   # or java11, java17, etc.
+set JAVA_HOME=C:\path\to\java17   # or java21, etc.
 
 # Verify JDK compatibility
 # Check current Spring Boot version in pom.xml (should support your JDK version)
@@ -236,11 +232,11 @@ grep -r "spring-boot.version" pom.xml
 
 #### 3. Memory Issues
 ```bash
-# Increase Maven memory
-export MAVEN_OPTS="-Xmx2g -XX:MaxPermSize=512m"
+# Increase Maven memory (JDK 17: no PermGen, use MaxRAMPercentage instead)
+export MAVEN_OPTS="-Xmx2g -XX:MaxRAMPercentage=50.0"
 
 # For Windows
-set MAVEN_OPTS=-Xmx2g -XX:MaxPermSize=512m
+set MAVEN_OPTS=-Xmx2g -XX:MaxRAMPercentage=50.0
 ```
 
 #### 4. Network/Proxy Issues
@@ -335,14 +331,14 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java-version: [8, 11, 17]
+        java-version: [17, 21]
     steps:
     - uses: actions/checkout@v2
     - name: Set up JDK ${{ matrix.java-version }}
       uses: actions/setup-java@v2
       with:
         java-version: ${{ matrix.java-version }}
-        distribution: 'adopt'
+        distribution: 'temurin'
     - name: Cache Maven dependencies
       uses: actions/cache@v2
       with:
@@ -364,11 +360,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - name: Set up JDK 11
+    - name: Set up JDK 17
       uses: actions/setup-java@v2
       with:
-        java-version: '11'
-        distribution: 'adopt'
+        java-version: '17'
+        distribution: 'temurin'
     - name: Cache Maven dependencies
       uses: actions/cache@v2
       with:

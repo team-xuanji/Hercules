@@ -1,16 +1,12 @@
 package team.magic.flute.hercules.manager.entity.recover.impl;
 
-
-import team.magic.flute.hercules.manager.entity.recover.RecoverStrategy;
+import java.time.LocalDateTime;
 import lombok.Data;
 import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
+import team.magic.flute.hercules.manager.entity.recover.RecoverStrategy;
 
-import java.time.LocalDateTime;
-
-/**
- * Fixed interval retry.
- */
+/** Fixed interval retry. */
 @Slf4j
 @Data
 @Accessors(chain = true)
@@ -25,14 +21,14 @@ public class FixedIntervalStrategy implements RecoverStrategy {
 
     @Override
     public boolean processFinished() {
-        return retryTimes>maxRetryTimes;
+        return retryTimes > maxRetryTimes;
     }
 
     @Override
     public synchronized LocalDateTime processAndIncrementNextTimeStamp() {
         LocalDateTime nextTriggerTime = LocalDateTime.now();
-        if(retryTimes<=maxRetryTimes){
-            nextTriggerTime = nextTriggerTime.minusSeconds(-1*dailyMs/1000);
+        if (retryTimes <= maxRetryTimes) {
+            nextTriggerTime = nextTriggerTime.minusSeconds(-1 * dailyMs / 1000);
             retryTimes++;
         }
         return nextTriggerTime;

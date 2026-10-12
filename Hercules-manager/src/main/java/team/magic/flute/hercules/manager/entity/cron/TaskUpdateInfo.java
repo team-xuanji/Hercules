@@ -1,11 +1,10 @@
 package team.magic.flute.hercules.manager.entity.cron;
 
-import team.magic.flute.hercules.manager.dao.po.HerculesTaskInfo;
-import lombok.Data;
-import lombok.experimental.Accessors;
-
 import java.time.LocalDateTime;
 import java.util.List;
+import lombok.Data;
+import lombok.experimental.Accessors;
+import team.magic.flute.hercules.manager.dao.po.HerculesTaskInfo;
 
 @Data
 @Accessors(chain = true)

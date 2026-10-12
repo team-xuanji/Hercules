@@ -1,32 +1,29 @@
 package team.magic.flute.hercules.manager.web;
 
+import jakarta.servlet.ReadListener;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletInputStream;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StreamUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import javax.servlet.ReadListener;
-import javax.servlet.ServletInputStream;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletRequestWrapper;
-import javax.servlet.http.HttpServletResponse;
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-
 /**
- * Caches the raw request body for signed {@code /taskDispatch/} PUT requests
- * so that signature verification (which needs the wire bytes) can read them
- * after Spring's {@code @RequestBody} deserialization has already consumed the
- * input stream.
+ * Caches the raw request body for signed {@code /taskDispatch/} PUT requests so that signature
+ * verification (which needs the wire bytes) can read them after Spring's {@code @RequestBody}
+ * deserialization has already consumed the input stream.
  *
- * <p>The cached bytes are exposed both via {@code request.getAttribute(RAW_BODY_ATTR)}
- * (read by {@code TaskDispatchController.isInvalidExecutorOp}) and via the
- * wrapper's {@code getInputStream}/{@code getReader}, so the rest of the
- * request pipeline reads the same bytes the signature was computed over.
- * GET requests and non-{@code /taskDispatch/} paths are passed through
+ * <p>The cached bytes are exposed both via {@code request.getAttribute(RAW_BODY_ATTR)} (read by
+ * {@code TaskDispatchController.isInvalidExecutorOp}) and via the wrapper's {@code
+ * getInputStream}/{@code getReader}, so the rest of the request pipeline reads the same bytes the
+ * signature was computed over. GET requests and non-{@code /taskDispatch/} paths are passed through
  * untouched.
  */
 @Component
@@ -36,9 +33,11 @@ public class CachedBodyFilter extends OncePerRequestFilter {
     public static final String RAW_BODY_ATTR = "hercules.rawBody";
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                   HttpServletResponse response,
-                                   javax.servlet.FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            jakarta.servlet.FilterChain filterChain)
+            throws ServletException, IOException {
         if ("PUT".equalsIgnoreCase(request.getMethod())
                 && request.getServletPath() != null
                 && request.getServletPath().startsWith("/taskDispatch/")) {
@@ -57,9 +56,8 @@ public class CachedBodyFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Replays a fixed byte array for every read of the body, so downstream
-     * consumers (@RequestBody marshalling, signature verification) see the
-     * identical wire bytes regardless of read order.
+     * Replays a fixed byte array for every read of the body, so downstream consumers (@RequestBody
+     * marshalling, signature verification) see the identical wire bytes regardless of read order.
      */
     static final class CachedBodyRequestWrapper extends HttpServletRequestWrapper {
         private final byte[] body;
@@ -102,9 +100,12 @@ public class CachedBodyFilter extends OncePerRequestFilter {
 
         @Override
         public BufferedReader getReader() {
-            return new BufferedReader(new InputStreamReader(getInputStream(), getCharacterEncoding() == null
-                    ? java.nio.charset.StandardCharsets.UTF_8
-                    : java.nio.charset.Charset.forName(getCharacterEncoding())));
+            return new BufferedReader(
+                    new InputStreamReader(
+                            getInputStream(),
+                            getCharacterEncoding() == null
+                                    ? java.nio.charset.StandardCharsets.UTF_8
+                                    : java.nio.charset.Charset.forName(getCharacterEncoding())));
         }
     }
 }

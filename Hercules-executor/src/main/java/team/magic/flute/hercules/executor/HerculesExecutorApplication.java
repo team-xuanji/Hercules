@@ -8,24 +8,26 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * Hercules Executor Application
  *
  * <p>This is the main entry point for the Hercules Executor module, which is responsible for:
+ *
  * <ul>
- *   <li>Task execution and processing</li>
- *   <li>Plugin loading and management</li>
- *   <li>Resource downloading and caching</li>
- *   <li>Task status reporting and coordination</li>
+ *   <li>Task execution and processing
+ *   <li>Plugin loading and management
+ *   <li>Resource downloading and caching
+ *   <li>Task status reporting and coordination
  * </ul>
  *
- * <p>The Hercules Executor acts as the execution engine for the Hercules task system,
- * consuming tasks from the Hercules Manager and executing them using dynamically loaded plugins.
- * It supports various execution environments and can be configured for different business scenarios.
+ * <p>The Hercules Executor acts as the execution engine for the Hercules task system, consuming
+ * tasks from the Hercules Manager and executing them using dynamically loaded plugins. It supports
+ * various execution environments and can be configured for different business scenarios.
  *
  * <p>Key features include:
+ *
  * <ul>
- *   <li>Multi-threaded task execution with configurable parallelism</li>
- *   <li>Dynamic plugin loading from remote resources</li>
- *   <li>DuckDB integration for data processing capabilities</li>
- *   <li>Automatic task recovery and retry mechanisms</li>
- *   <li>Resource management and cleanup</li>
+ *   <li>Multi-threaded task execution with configurable parallelism
+ *   <li>Dynamic plugin loading from remote resources
+ *   <li>DuckDB integration for data processing capabilities
+ *   <li>Automatic task recovery and retry mechanisms
+ *   <li>Resource management and cleanup
  * </ul>
  *
  * @author Hercules Team

@@ -1,30 +1,19 @@
 package team.magic.flute.hercules.common.http;
 
-/**
- * 2021-12-27  CL
- **/
+/** 2021-12-27 CL */
 public enum EnumResponseType {
 
-    /**
-     * Return ok
-     */
+    /** Return ok */
     SUCCESS(200, "ok", "success"),
 
-    /**
-     * Parameter exception
-     */
+    /** Parameter exception */
     ARGUMENT_NOT_VALID(300, "argument_not_valid", "argument_not_valid"),
 
-    /**
-     * Plugin registration error
-     */
+    /** Plugin registration error */
     PLUGIN_REGISTER_ERROR(405, "plugin_register_error", "Plugin registration exception"),
 
-    /**
-     * Failure
-     */
+    /** Failure */
     DEFAULT_ERROR(500, "unknown error", "[service] unknown error");
-
 
     EnumResponseType(int code, String message, String describe) {
         this.code = code;

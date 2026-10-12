@@ -4,7 +4,7 @@ import lombok.Data;
 import lombok.experimental.Accessors;
 
 @Data
-@Accessors(chain=true)
+@Accessors(chain = true)
 public class AsyncRetryOneTaskRequestVO {
     private String taskId;
     private String errorMessage;

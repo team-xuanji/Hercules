@@ -1,23 +1,21 @@
 package team.magic.flute.hercules.manager.util;
 
-import org.junit.jupiter.api.Test;
-import org.quartz.CronTrigger;
-
-import java.text.ParseException;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.util.Date;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.text.ParseException;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Date;
+import org.junit.jupiter.api.Test;
+import org.quartz.CronTrigger;
+
 /**
- * Pure unit tests for {@link CronUtil}. No Spring context, no DB. Quartz is on
- * the classpath via the manager's quartz dependency. These pin the cron-parsing
- * contract the cron-task scheduler relies on: valid crons yield future fire
- * times, invalid crons yield null (never throw).
+ * Pure unit tests for {@link CronUtil}. No Spring context, no DB. Quartz is on the classpath via
+ * the manager's quartz dependency. These pin the cron-parsing contract the cron-task scheduler
+ * relies on: valid crons yield future fire times, invalid crons yield null (never throw).
  */
 class CronUtilTest {
 

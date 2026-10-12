@@ -1,15 +1,14 @@
 package team.magic.flute.hercules.twelve.labors.vo;
 
+import java.util.List;
 import lombok.Data;
 import lombok.experimental.Accessors;
-
-import java.util.List;
 
 /**
  * Dynamic Entity for Configuration Fields
  *
- * <p>This class represents dynamic configuration fields used in export format configurations.
- * It provides a flexible way to define configuration parameters with validation and documentation.
+ * <p>This class represents dynamic configuration fields used in export format configurations. It
+ * provides a flexible way to define configuration parameters with validation and documentation.
  *
  * @author Hercules Team
  * @version 1.0
@@ -18,24 +17,18 @@ import java.util.List;
 @Data
 @Accessors(chain = true)
 public class DynamicEntity {
-    /**
-     * Configuration key
-     */
+    /** Configuration key */
     private String key;
-    /**
-     * Configuration description
-     */
+
+    /** Configuration description */
     private String desc;
-    /**
-     * Whether this field is required
-     */
+
+    /** Whether this field is required */
     private boolean require;
-    /**
-     * Example value
-     */
+
+    /** Example value */
     private String demoValue;
-    /**
-     * Available enumeration values
-     */
+
+    /** Available enumeration values */
     private List<String> valueEnum;
 }

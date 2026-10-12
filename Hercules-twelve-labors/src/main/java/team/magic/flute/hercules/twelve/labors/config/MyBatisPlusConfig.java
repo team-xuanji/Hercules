@@ -9,31 +9,33 @@ import org.springframework.context.annotation.Configuration;
 /**
  * MyBatis Plus Configuration for Business Access Gateway
  *
- * <p>This configuration class sets up MyBatis Plus framework components required for
- * data access operations within the Hercules business access gateway. It configures
- * database interaction features that support various business operations including
- * task management, user authentication, and business data processing.
+ * <p>This configuration class sets up MyBatis Plus framework components required for data access
+ * operations within the Hercules business access gateway. It configures database interaction
+ * features that support various business operations including task management, user authentication,
+ * and business data processing.
  *
- * <p><strong>Business Context:</strong> As part of the business access gateway architecture,
- * this configuration enables efficient and scalable data access for:
+ * <p><strong>Business Context:</strong> As part of the business access gateway architecture, this
+ * configuration enables efficient and scalable data access for:
+ *
  * <ul>
- *   <li>Business task definition and execution tracking</li>
- *   <li>User authentication and authorization data</li>
- *   <li>Business operation audit logs and history</li>
- *   <li>Configuration and metadata management</li>
+ *   <li>Business task definition and execution tracking
+ *   <li>User authentication and authorization data
+ *   <li>Business operation audit logs and history
+ *   <li>Configuration and metadata management
  * </ul>
  *
  * <p><strong>Database Features:</strong>
+ *
  * <ul>
- *   <li>Automatic pagination support for large result sets</li>
- *   <li>MySQL-optimized query execution</li>
- *   <li>Performance monitoring and optimization</li>
- *   <li>Transaction management for business operations</li>
+ *   <li>Automatic pagination support for large result sets
+ *   <li>MySQL-optimized query execution
+ *   <li>Performance monitoring and optimization
+ *   <li>Transaction management for business operations
  * </ul>
  *
- * <p><strong>Integration:</strong> This configuration supports the business access gateway's
- * data persistence requirements, ensuring reliable and efficient storage and retrieval
- * of business operation data, user information, and system metadata.
+ * <p><strong>Integration:</strong> This configuration supports the business access gateway's data
+ * persistence requirements, ensuring reliable and efficient storage and retrieval of business
+ * operation data, user information, and system metadata.
  *
  * @author Hercules Team
  * @version 1.0
@@ -45,18 +47,19 @@ public class MyBatisPlusConfig {
     /**
      * Configure MyBatis Plus interceptors for enhanced database operations
      *
-     * <p>Sets up interceptors that provide additional functionality for database
-     * operations within the business access gateway, including automatic pagination
-     * support for handling large datasets efficiently.
+     * <p>Sets up interceptors that provide additional functionality for database operations within
+     * the business access gateway, including automatic pagination support for handling large
+     * datasets efficiently.
      *
      * <p><strong>Configured Interceptors:</strong>
+     *
      * <ul>
-     *   <li>PaginationInnerInterceptor - Automatic pagination for MySQL queries</li>
+     *   <li>PaginationInnerInterceptor - Automatic pagination for MySQL queries
      * </ul>
      *
-     * <p>The pagination interceptor is particularly important for business operations
-     * that need to handle large amounts of data, such as task history queries,
-     * audit log retrieval, and bulk data export operations.
+     * <p>The pagination interceptor is particularly important for business operations that need to
+     * handle large amounts of data, such as task history queries, audit log retrieval, and bulk
+     * data export operations.
      *
      * @return configured MybatisPlusInterceptor with pagination support
      */

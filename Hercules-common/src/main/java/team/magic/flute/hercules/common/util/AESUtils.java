@@ -1,22 +1,20 @@
 package team.magic.flute.hercules.common.util;
 
+import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
+import java.security.Security;
+import java.util.Base64;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
 import org.bouncycastle.crypto.engines.AESEngine;
 import org.bouncycastle.crypto.modes.GCMBlockCipher;
 import org.bouncycastle.crypto.params.AEADParameters;
 import org.bouncycastle.crypto.params.KeyParameter;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
-import javax.crypto.KeyGenerator;
-import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
-import java.security.SecureRandom;
-import java.security.Security;
-import java.util.Base64;
-
 /**
- * AES encryption and decryption utility class
- * Uses BouncyCastle library to implement AES256-GCM encryption
- *
+ * AES encryption and decryption utility class Uses BouncyCastle library to implement AES256-GCM
+ * encryption
  */
 public class AESUtils {
 
@@ -51,8 +49,10 @@ public class AESUtils {
      * @return encrypted byte array (including authentication tag)
      * @throws Exception thrown when encryption fails
      */
-    private static byte[] encryptWithBouncyCastle(byte[] plainText, byte[] key, byte[] iv) throws Exception {
-        GCMBlockCipher cipher = (GCMBlockCipher) GCMBlockCipher.newInstance(AESEngine.newInstance());
+    private static byte[] encryptWithBouncyCastle(byte[] plainText, byte[] key, byte[] iv)
+            throws Exception {
+        GCMBlockCipher cipher =
+                (GCMBlockCipher) GCMBlockCipher.newInstance(AESEngine.newInstance());
         AEADParameters parameters = new AEADParameters(new KeyParameter(key), GCM_TAG_LENGTH, iv);
 
         cipher.init(true, parameters);
@@ -76,8 +76,10 @@ public class AESUtils {
      * @return decrypted byte array
      * @throws Exception thrown when decryption fails
      */
-    private static byte[] decryptWithBouncyCastle(byte[] cipherText, byte[] key, byte[] iv) throws Exception {
-        GCMBlockCipher cipher = (GCMBlockCipher) GCMBlockCipher.newInstance(AESEngine.newInstance());
+    private static byte[] decryptWithBouncyCastle(byte[] cipherText, byte[] key, byte[] iv)
+            throws Exception {
+        GCMBlockCipher cipher =
+                (GCMBlockCipher) GCMBlockCipher.newInstance(AESEngine.newInstance());
         AEADParameters parameters = new AEADParameters(new KeyParameter(key), GCM_TAG_LENGTH, iv);
 
         cipher.init(false, parameters);
@@ -100,8 +102,11 @@ public class AESUtils {
      */
     private static void validateKeyLength(byte[] keyBytes) {
         if (keyBytes.length != AES256_KEY_LENGTH) {
-            throw new IllegalArgumentException("Invalid AES key length: " + keyBytes.length + " bytes. " +
-                    "AES256 key must be 32 bytes (256 bits). Use generateKey() to create a valid key.");
+            throw new IllegalArgumentException(
+                    "Invalid AES key length: "
+                            + keyBytes.length
+                            + " bytes. "
+                            + "AES256 key must be 32 bytes (256 bits). Use generateKey() to create a valid key.");
         }
     }
 
@@ -114,10 +119,12 @@ public class AESUtils {
      */
     public static String generateKey(int keyLength) {
         if (keyLength != 256) {
-            throw new IllegalArgumentException("Only AES256 (256-bit) keys are supported. Use generateKey() for default AES256 key.");
+            throw new IllegalArgumentException(
+                    "Only AES256 (256-bit) keys are supported. Use generateKey() for default AES256 key.");
         }
         try {
-            KeyGenerator keyGenerator = KeyGenerator.getInstance(AES_ALGORITHM, BouncyCastleProvider.PROVIDER_NAME);
+            KeyGenerator keyGenerator =
+                    KeyGenerator.getInstance(AES_ALGORITHM, BouncyCastleProvider.PROVIDER_NAME);
             keyGenerator.init(keyLength);
             SecretKey secretKey = keyGenerator.generateKey();
             return Base64.getEncoder().encodeToString(secretKey.getEncoded());
@@ -257,7 +264,8 @@ public class AESUtils {
             byte[] ivBytes = Base64.getDecoder().decode(iv);
             return encryptWithBouncyCastle(data, keyBytes, ivBytes);
         } catch (Exception e) {
-            throw new RuntimeException(StrFormat.format("Byte array encryption failed, iv[{}]",iv), e);
+            throw new RuntimeException(
+                    StrFormat.format("Byte array encryption failed, iv[{}]", iv), e);
         }
     }
 
@@ -329,9 +337,7 @@ public class AESUtils {
         return new EncryptBytesResult(encrypt(data, key, iv), Base64.getDecoder().decode(iv));
     }
 
-    /**
-     * Encryption result wrapper class
-     */
+    /** Encryption result wrapper class */
     public static class EncryptResult {
         private final String cipherText;
         private final String iv;
@@ -351,16 +357,18 @@ public class AESUtils {
 
         @Override
         public String toString() {
-            return "EncryptResult{" +
-                    "cipherText='" + cipherText + '\'' +
-                    ", iv='" + iv + '\'' +
-                    '}';
+            return "EncryptResult{"
+                    + "cipherText='"
+                    + cipherText
+                    + '\''
+                    + ", iv='"
+                    + iv
+                    + '\''
+                    + '}';
         }
     }
 
-    /**
-     * Byte array encryption result wrapper class
-     */
+    /** Byte array encryption result wrapper class */
     public static class EncryptBytesResult {
         private final byte[] cipherText;
         private final byte[] iv;
@@ -380,10 +388,12 @@ public class AESUtils {
 
         @Override
         public String toString() {
-            return "EncryptBytesResult{" +
-                    "cipherText=" + Base64.getEncoder().encodeToString(cipherText) +
-                    ", iv=" + Base64.getEncoder().encodeToString(iv) +
-                    '}';
+            return "EncryptBytesResult{"
+                    + "cipherText="
+                    + Base64.getEncoder().encodeToString(cipherText)
+                    + ", iv="
+                    + Base64.getEncoder().encodeToString(iv)
+                    + '}';
         }
     }
 }

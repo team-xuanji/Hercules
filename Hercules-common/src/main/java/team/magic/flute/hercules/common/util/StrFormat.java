@@ -7,21 +7,23 @@ import java.util.regex.Pattern;
 /**
  * High-performance string formatting utility class.
  *
- * <p>This utility provides efficient string formatting capabilities with performance
- * improvements over standard Java string formatting methods. It supports two types
- * of template formatting:
+ * <p>This utility provides efficient string formatting capabilities with performance improvements
+ * over standard Java string formatting methods. It supports two types of template formatting:
+ *
  * <ul>
- *   <li>Positional formatting using {} placeholders</li>
- *   <li>Named parameter formatting using ${name} placeholders</li>
+ *   <li>Positional formatting using {} placeholders
+ *   <li>Named parameter formatting using ${name} placeholders
  * </ul>
  *
  * <p>Performance characteristics:
+ *
  * <ul>
- *   <li>Positional formatting: ~3x faster than String.format()</li>
- *   <li>Named parameter formatting: ~2x faster than String.format()</li>
+ *   <li>Positional formatting: ~3x faster than String.format()
+ *   <li>Named parameter formatting: ~2x faster than String.format()
  * </ul>
  *
  * <p>Example usage:
+ *
  * <pre>{@code
  * // Positional formatting
  * String result1 = StrFormat.format("Hello {}, you are {} years old", "John", 25);
@@ -40,39 +42,34 @@ import java.util.regex.Pattern;
 public class StrFormat {
 
     /**
-     * Pattern to match named parameters in the format ${variable_name}.
-     * Variable names can contain numbers, uppercase and lowercase letters,
-     * underscores, periods (.), and hyphens (-).
+     * Pattern to match named parameters in the format ${variable_name}. Variable names can contain
+     * numbers, uppercase and lowercase letters, underscores, periods (.), and hyphens (-).
      */
     private static final Pattern pattern = Pattern.compile("\\$\\{([\\w\\.\\-]+)\\}");
 
-    /**
-     * Pattern to match positional placeholders in the format {}.
-     */
+    /** Pattern to match positional placeholders in the format {}. */
     private static final Pattern pattern2 = Pattern.compile("\\{}");
-
 
     /**
      * Format a template string with positional arguments.
      *
-     * <p>This method replaces {} placeholders in the template string with the provided
-     * arguments in order. It offers approximately 3x better performance than String.format().
+     * <p>This method replaces {} placeholders in the template string with the provided arguments in
+     * order. It offers approximately 3x better performance than String.format().
      *
      * <p>Features:
+     *
      * <ul>
-     *   <li>Null-safe: handles null template strings and arguments gracefully</li>
-     *   <li>Partial matching: unmatched placeholders remain unchanged</li>
-     *   <li>Exception-safe: continues processing even if individual replacements fail</li>
+     *   <li>Null-safe: handles null template strings and arguments gracefully
+     *   <li>Partial matching: unmatched placeholders remain unchanged
+     *   <li>Exception-safe: continues processing even if individual replacements fail
      * </ul>
      *
      * @param templateStr the template string containing {} placeholders
      * @param args the arguments to substitute into the placeholders
-     * @return the formatted string with placeholders replaced by arguments,
-     *         or the original template if no arguments provided,
-     *         or null if template is null
-     *
+     * @return the formatted string with placeholders replaced by arguments, or the original
+     *     template if no arguments provided, or null if template is null
      * @example
-     * <pre>{@code
+     *     <pre>{@code
      * String result = StrFormat.format("User {} has {} points", "John", 100);
      * // Returns: "User John has 100 points"
      *
@@ -110,12 +107,13 @@ public class StrFormat {
             }
         }
 
-        //No expression matched, output the template string as is.
+        // No expression matched, output the template string as is.
         if (matchCnt == 0) {
             return templateStr;
         }
 
-        //After matching is complete, if there are any remaining characters in the template, append them directly to the end of the new string.
+        // After matching is complete, if there are any remaining characters in the template, append
+        // them directly to the end of the new string.
         if (nextStartIdx < templateStr.length()) {
             newValue.append(templateStr.substring(nextStartIdx));
         }
@@ -126,26 +124,25 @@ public class StrFormat {
     /**
      * Format a template string with named parameters from a Map.
      *
-     * <p>This method replaces ${key} placeholders in the template string with values
-     * from the provided Map. It offers approximately 2x better performance than String.format().
+     * <p>This method replaces ${key} placeholders in the template string with values from the
+     * provided Map. It offers approximately 2x better performance than String.format().
      *
      * <p>Features:
+     *
      * <ul>
-     *   <li>Named parameters: use ${variable_name} syntax for clear, readable templates</li>
-     *   <li>Flexible keys: supports alphanumeric characters, underscores, dots, and hyphens</li>
-     *   <li>Null-safe: handles null template strings and parameter maps gracefully</li>
-     *   <li>Missing parameters: unmatched placeholders remain unchanged</li>
-     *   <li>Exception-safe: continues processing even if individual replacements fail</li>
+     *   <li>Named parameters: use ${variable_name} syntax for clear, readable templates
+     *   <li>Flexible keys: supports alphanumeric characters, underscores, dots, and hyphens
+     *   <li>Null-safe: handles null template strings and parameter maps gracefully
+     *   <li>Missing parameters: unmatched placeholders remain unchanged
+     *   <li>Exception-safe: continues processing even if individual replacements fail
      * </ul>
      *
      * @param templateStr the template string containing ${key} placeholders
      * @param args the Map containing key-value pairs for parameter substitution
-     * @return the formatted string with placeholders replaced by Map values,
-     *         or the original template if no arguments provided,
-     *         or null if template is null
-     *
+     * @return the formatted string with placeholders replaced by Map values, or the original
+     *     template if no arguments provided, or null if template is null
      * @example
-     * <pre>{@code
+     *     <pre>{@code
      * Map<String, Object> params = Map.of(
      *     "user", "Alice",
      *     "score", 95,
@@ -189,18 +186,17 @@ public class StrFormat {
             }
         }
 
-        //No expression matched, output the template string as is.
+        // No expression matched, output the template string as is.
         if (matchCnt == 0) {
             return templateStr;
         }
 
-        //After matching is complete, if there are any remaining characters in the template, append them directly to the end of the new string.
+        // After matching is complete, if there are any remaining characters in the template, append
+        // them directly to the end of the new string.
         if (nextStartIdx < templateStr.length()) {
             newValue.append(templateStr.substring(nextStartIdx));
         }
 
         return newValue.toString();
     }
-
 }
-

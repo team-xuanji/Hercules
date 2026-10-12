@@ -17,7 +17,7 @@ public class ExecutorInfoReportRequestVO {
     private int originalLength;
     private String compressTypeStr;
 
-    public void fillRequestVO(HerculesExecutorHeartbeatInfo info,String aesKey) {
+    public void fillRequestVO(HerculesExecutorHeartbeatInfo info, String aesKey) {
         byte[] data = ForyUtils.serialize(info);
         byte[] compressed = BinaryCompressUtils.compress(data, HerculesHttpCompressType.ZSTD);
         String aesIV = AESUtils.generateIV();

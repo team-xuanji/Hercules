@@ -1,14 +1,12 @@
 package team.magic.flute.hercules.twelve.labors.vo;
 
+import java.time.LocalDateTime;
 import lombok.Data;
 import lombok.experimental.Accessors;
 import team.magic.flute.hercules.common.status.TaskStatus;
 
-import java.time.LocalDateTime;
-
 /**
- * Task status query result VO
- * Used to return task status query result information
+ * Task status query result VO Used to return task status query result information
  *
  * @author Hercules
  */
@@ -16,68 +14,42 @@ import java.time.LocalDateTime;
 @Accessors(chain = true)
 public class TaskStatusVO {
 
-    /**
-     * Task ID
-     */
+    /** Task ID */
     private Long taskId;
 
-    /**
-     * Business scenario key
-     */
+    /** Business scenario key */
     private String businessKey;
 
-    /**
-     * Task status
-     */
+    /** Task status */
     private TaskStatus taskStatus;
 
-    /**
-     * File path
-     */
+    /** File path */
     private String filePath;
 
-    /**
-     * Task creation time
-     */
+    /** Task creation time */
     private LocalDateTime insertTime;
 
-    /**
-     * Task update time
-     */
+    /** Task update time */
     private LocalDateTime updateTime;
 
-    /**
-     * Whether completed
-     */
+    /** Whether completed */
     private Boolean isCompleted;
 
-    /**
-     * Operation source
-     */
+    /** Operation source */
     private String operatorSource;
 
-    /**
-     * Application key
-     */
+    /** Application key */
     private String appKey;
 
-    /**
-     * User ID
-     */
+    /** User ID */
     private String userId;
-    /**
-     * User name
-     */
+
+    /** User name */
     private String userName;
 
-    /**
-     * Task execution progress description
-     */
+    /** Task execution progress description */
     private String progressDescription;
 
-    /**
-     * Error message (if task failed)
-     */
+    /** Error message (if task failed) */
     private String errorMessage;
-
 }

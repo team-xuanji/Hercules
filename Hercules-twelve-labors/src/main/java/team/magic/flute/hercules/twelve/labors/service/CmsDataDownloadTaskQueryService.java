@@ -3,13 +3,12 @@ package team.magic.flute.hercules.twelve.labors.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import team.magic.flute.hercules.twelve.labors.dao.entity.CmsDataDownloadTaskPO;
-import team.magic.flute.hercules.twelve.labors.vo.CmsDataDownloadTaskQueryVO;
+import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
-
-import java.util.List;
+import team.magic.flute.hercules.twelve.labors.dao.entity.CmsDataDownloadTaskPO;
+import team.magic.flute.hercules.twelve.labors.vo.CmsDataDownloadTaskQueryVO;
 
 /**
  * CMS Data Download Task Query Service
@@ -23,20 +22,21 @@ import java.util.List;
  */
 @Service
 public class CmsDataDownloadTaskQueryService {
-    
-    @Autowired
-    private CmsDataDownloadTaskService taskService;
-    
+
+    @Autowired private CmsDataDownloadTaskService taskService;
+
     /**
-     * Paginated query of task list (unified permission control)
-     * Supports smart permission control: if appKey and userId are provided, permission verification is performed, otherwise all tasks are queried
+     * Paginated query of task list (unified permission control) Supports smart permission control:
+     * if appKey and userId are provided, permission verification is performed, otherwise all tasks
+     * are queried
      *
      * @param queryVO query conditions
      * @param appKey application key (optional, no permission control when null)
      * @param userId user ID (optional, no permission control when null)
      * @return paginated result
      */
-    public IPage<CmsDataDownloadTaskPO> queryTasks(CmsDataDownloadTaskQueryVO queryVO, String appKey, String userId) {
+    public IPage<CmsDataDownloadTaskPO> queryTasks(
+            CmsDataDownloadTaskQueryVO queryVO, String appKey, String userId) {
         // Set permission control fields to queryVO
         queryVO.setAppKey(appKey);
         queryVO.setUserId(userId);
@@ -52,8 +52,9 @@ public class CmsDataDownloadTaskQueryService {
     }
 
     /**
-     * Query task by task ID (unified permission control)
-     * Supports smart permission control: if appKey and userId are provided, permission verification is performed, otherwise all tasks are queried
+     * Query task by task ID (unified permission control) Supports smart permission control: if
+     * appKey and userId are provided, permission verification is performed, otherwise all tasks are
+     * queried
      *
      * @param taskId task ID
      * @param appKey application key (optional, no permission control when null)
@@ -65,7 +66,8 @@ public class CmsDataDownloadTaskQueryService {
         LambdaQueryWrapper<CmsDataDownloadTaskPO> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(CmsDataDownloadTaskPO::getTaskId, taskId);
 
-        // Smart permission control: add permission conditions only when valid permission parameters are provided
+        // Smart permission control: add permission conditions only when valid permission parameters
+        // are provided
         if (StringUtils.hasText(appKey)) {
             queryWrapper.eq(CmsDataDownloadTaskPO::getAppKey, appKey);
         }
@@ -77,20 +79,23 @@ public class CmsDataDownloadTaskQueryService {
     }
 
     /**
-     * Query task list by business key (unified permission control)
-     * Supports smart permission control: if appKey and userId are provided, permission verification is performed, otherwise all tasks are queried
+     * Query task list by business key (unified permission control) Supports smart permission
+     * control: if appKey and userId are provided, permission verification is performed, otherwise
+     * all tasks are queried
      *
      * @param businessKey business scenario key
      * @param appKey application key (optional, no permission control when null)
      * @param userId user ID (optional, no permission control when null)
      * @return task list
      */
-    public List<CmsDataDownloadTaskPO> getTasksByBusinessKey(String businessKey, String appKey, String userId) {
+    public List<CmsDataDownloadTaskPO> getTasksByBusinessKey(
+            String businessKey, String appKey, String userId) {
         // Build query conditions
         LambdaQueryWrapper<CmsDataDownloadTaskPO> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(CmsDataDownloadTaskPO::getBusinessKey, businessKey);
 
-        // Smart permission control: add permission conditions only when valid permission parameters are provided
+        // Smart permission control: add permission conditions only when valid permission parameters
+        // are provided
         if (StringUtils.hasText(appKey)) {
             queryWrapper.eq(CmsDataDownloadTaskPO::getAppKey, appKey);
         }
@@ -104,8 +109,9 @@ public class CmsDataDownloadTaskQueryService {
     }
 
     /**
-     * Get task status statistics (unified permission control)
-     * Supports intelligent permission control: if appKey and userId are provided, statistics for user tasks; otherwise, statistics for all tasks
+     * Get task status statistics (unified permission control) Supports intelligent permission
+     * control: if appKey and userId are provided, statistics for user tasks; otherwise, statistics
+     * for all tasks
      *
      * @param appKey application key (optional, statistics for all tasks when null)
      * @param userId user ID (optional, statistics for all tasks when null)
@@ -115,7 +121,8 @@ public class CmsDataDownloadTaskQueryService {
         // Build query conditions
         LambdaQueryWrapper<CmsDataDownloadTaskPO> queryWrapper = new LambdaQueryWrapper<>();
 
-        // Intelligent permission control: add permission conditions only when valid permission parameters are provided
+        // Intelligent permission control: add permission conditions only when valid permission
+        // parameters are provided
         if (StringUtils.hasText(appKey)) {
             queryWrapper.eq(CmsDataDownloadTaskPO::getAppKey, appKey);
         }
@@ -128,11 +135,15 @@ public class CmsDataDownloadTaskQueryService {
 
         // Group statistics by status
         java.util.Map<String, Long> stats = new java.util.HashMap<>();
-        java.util.Map<String, Long> statusCounts = tasks.stream()
-                .collect(java.util.stream.Collectors.groupingBy(
-                        task -> task.getTaskStatus() != null ? task.getTaskStatus() : "UNKNOWN",
-                        java.util.stream.Collectors.counting()
-                ));
+        java.util.Map<String, Long> statusCounts =
+                tasks.stream()
+                        .collect(
+                                java.util.stream.Collectors.groupingBy(
+                                        task ->
+                                                task.getTaskStatus() != null
+                                                        ? task.getTaskStatus()
+                                                        : "UNKNOWN",
+                                        java.util.stream.Collectors.counting()));
 
         stats.putAll(statusCounts);
         stats.put("TOTAL", (long) tasks.size());
@@ -141,15 +152,16 @@ public class CmsDataDownloadTaskQueryService {
     }
 
     /**
-     * Build query conditions (intelligent permission control)
-     * Automatically selects permission control mode based on whether queryVO contains appKey and userId:
-     * - If valid appKey and userId are included, permission control conditions are added
-     * - If not included, no permission control conditions are added (compatibility mode)
+     * Build query conditions (intelligent permission control) Automatically selects permission
+     * control mode based on whether queryVO contains appKey and userId: - If valid appKey and
+     * userId are included, permission control conditions are added - If not included, no permission
+     * control conditions are added (compatibility mode)
      *
      * @param queryVO query VO
      * @return query conditions
      */
-    private LambdaQueryWrapper<CmsDataDownloadTaskPO> buildQueryWrapper(CmsDataDownloadTaskQueryVO queryVO) {
+    private LambdaQueryWrapper<CmsDataDownloadTaskPO> buildQueryWrapper(
+            CmsDataDownloadTaskQueryVO queryVO) {
         LambdaQueryWrapper<CmsDataDownloadTaskPO> queryWrapper = new LambdaQueryWrapper<>();
 
         // Permission control conditions (added only when valid appKey and userId are provided)

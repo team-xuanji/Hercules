@@ -1,36 +1,37 @@
 package team.magic.flute.hercules.common.status;
 
-import lombok.Data;
-import lombok.experimental.Accessors;
-import team.magic.flute.hercules.common.http.HerculesRunnableTaskInfo;
-
 import java.io.Closeable;
 import java.io.IOException;
 import java.sql.Connection;
 import java.util.Collection;
 import java.util.Map;
+import lombok.Data;
+import lombok.experimental.Accessors;
+import team.magic.flute.hercules.common.http.HerculesRunnableTaskInfo;
 
 /**
  * Task Execution Context
  *
- * <p>This class represents the execution context provided to plugins during task execution.
- * It contains all the necessary resources, configuration, and state information that a plugin
- * needs to perform its work within the Hercules execution environment.
+ * <p>This class represents the execution context provided to plugins during task execution. It
+ * contains all the necessary resources, configuration, and state information that a plugin needs to
+ * perform its work within the Hercules execution environment.
  *
  * <p>Key features:
+ *
  * <ul>
- *   <li>DuckDB integration for data processing and staging</li>
- *   <li>Task chaining capabilities for workflow orchestration</li>
- *   <li>Extensible context map for custom resources</li>
- *   <li>Result collection and checkpoint management</li>
- *   <li>Automatic resource cleanup through Closeable interface</li>
+ *   <li>DuckDB integration for data processing and staging
+ *   <li>Task chaining capabilities for workflow orchestration
+ *   <li>Extensible context map for custom resources
+ *   <li>Result collection and checkpoint management
+ *   <li>Automatic resource cleanup through Closeable interface
  * </ul>
  *
- * <p>The context is automatically managed by the Hercules Executor and should not be
- * manually instantiated by plugin developers. It is passed to the plugin's execute method
- * and provides access to all execution resources.
+ * <p>The context is automatically managed by the Hercules Executor and should not be manually
+ * instantiated by plugin developers. It is passed to the plugin's execute method and provides
+ * access to all execution resources.
  *
  * <p>Example usage in a plugin:
+ *
  * <pre>{@code
  * public void execute(TaskExecutionContext context) throws Exception {
  *     // Access DuckDB for data processing
@@ -59,136 +60,135 @@ public class TaskExecutionContext implements Closeable {
     /**
      * DuckDB database connection for data processing and staging.
      *
-     * <p>Each Executor comes with a built-in DuckDB instance that is disk-persistent.
-     * This powerful analytical database can be used for various tasks including:
+     * <p>Each Executor comes with a built-in DuckDB instance that is disk-persistent. This powerful
+     * analytical database can be used for various tasks including:
+     *
      * <ul>
-     *   <li>Staging datasets (limited only by available disk space)</li>
-     *   <li>Cross-source OLAP analysis and data transformation</li>
-     *   <li>Cross-source data synchronization and ETL operations</li>
-     *   <li>Complex analytical queries and aggregations</li>
-     *   <li>Integration with external data sources (MySQL, OSS, HTTP, etc.)</li>
+     *   <li>Staging datasets (limited only by available disk space)
+     *   <li>Cross-source OLAP analysis and data transformation
+     *   <li>Cross-source data synchronization and ETL operations
+     *   <li>Complex analytical queries and aggregations
+     *   <li>Integration with external data sources (MySQL, OSS, HTTP, etc.)
      * </ul>
      *
-     * <p>For detailed DuckDB capabilities, see the
-     * <a href="https://duckdb.org/docs/stable/">official documentation</a>.
+     * <p>For detailed DuckDB capabilities, see the <a
+     * href="https://duckdb.org/docs/stable/">official documentation</a>.
      */
     private Connection duckdbConnection;
 
     /**
      * Task execution configuration and parameters.
      *
-     * <p>Contains the JSON string with task-specific configuration, parameters,
-     * and context data that the plugin needs to perform its work. This is typically
-     * provided when the task is submitted to the Hercules system.
+     * <p>Contains the JSON string with task-specific configuration, parameters, and context data
+     * that the plugin needs to perform its work. This is typically provided when the task is
+     * submitted to the Hercules system.
      */
     private String executionContext;
 
     /**
      * Unique task identifier.
      *
-     * <p>The unique ID assigned to this task execution instance. This ID can be used
-     * for logging, tracking, and correlation purposes throughout the task lifecycle.
+     * <p>The unique ID assigned to this task execution instance. This ID can be used for logging,
+     * tracking, and correlation purposes throughout the task lifecycle.
      */
     private String id;
 
     /**
      * Task execution result for business consumption.
      *
-     * <p>Plugins can set this field to return results to the business side.
-     * The result will be persisted and made available through the Hercules Manager
-     * API for third-party systems to query task execution status and outcomes.
+     * <p>Plugins can set this field to return results to the business side. The result will be
+     * persisted and made available through the Hercules Manager API for third-party systems to
+     * query task execution status and outcomes.
      */
     private String checkPointResult;
 
     /**
      * Additional context resources and utilities.
      *
-     * <p>This extensible map can contain various resources and utilities that the
-     * executor provides to plugins, such as:
+     * <p>This extensible map can contain various resources and utilities that the executor provides
+     * to plugins, such as:
+     *
      * <ul>
-     *   <li>Message queue clients (Kafka, RabbitMQ, etc.)</li>
-     *   <li>Database connections to external systems</li>
-     *   <li>HTTP clients with specific configurations</li>
-     *   <li>Custom utilities and services</li>
+     *   <li>Message queue clients (Kafka, RabbitMQ, etc.)
+     *   <li>Database connections to external systems
+     *   <li>HTTP clients with specific configurations
+     *   <li>Custom utilities and services
      * </ul>
      *
-     * <p>Resources in this map that implement {@link Closeable} will be automatically
-     * closed when the context is disposed.
+     * <p>Resources in this map that implement {@link Closeable} will be automatically closed when
+     * the context is disposed.
      */
     private Map<String, Object> anotherContextMap;
 
     /**
      * Chain task requests for workflow orchestration.
      *
-     * <p>Plugins can use this field to trigger additional tasks as part of a workflow.
-     * After the current plugin completes, the executor will submit these tasks for
-     * execution. This enables complex multi-step workflows and task dependencies.
+     * <p>Plugins can use this field to trigger additional tasks as part of a workflow. After the
+     * current plugin completes, the executor will submit these tasks for execution. This enables
+     * complex multi-step workflows and task dependencies.
      *
-     * <p>Note: Currently, plugin relationships are not centrally managed, so plugins
-     * must handle their own task chaining logic and dependencies.
+     * <p>Note: Currently, plugin relationships are not centrally managed, so plugins must handle
+     * their own task chaining logic and dependencies.
      */
     private Collection<HerculesRunnableTaskInfo> forwardRequest;
 
     /**
      * Legacy switch for chain-task <em>submission strictness</em>. Deprecated.
      *
-     * <p><b>Actual semantics</b> — despite the name, the flag never made the
-     * parent wait for child completion. Both values only submit the forwards
-     * to the manager; they differ in error propagation when a submission
-     * fails:
+     * <p><b>Actual semantics</b> — despite the name, the flag never made the parent wait for child
+     * completion. Both values only submit the forwards to the manager; they differ in error
+     * propagation when a submission fails:
+     *
      * <ul>
-     *   <li>{@code true}: the failure fails the parent task, which retries
-     *       and resubmits the chain (safe to retry once forwards carry
-     *       deterministic ids — see the chain semantics ADR)</li>
-     *   <li>{@code false} (default): the failure is logged and swallowed; the
-     *       parent completes and the chain may silently lose steps</li>
+     *   <li>{@code true}: the failure fails the parent task, which retries and resubmits the chain
+     *       (safe to retry once forwards carry deterministic ids — see the chain semantics ADR)
+     *   <li>{@code false} (default): the failure is logged and swallowed; the parent completes and
+     *       the chain may silently lose steps
      * </ul>
      *
-     * <p><b>Why "wait for completion" was abandoned</b> — the original
-     * intent (parent blocks until children finish) was rejected because it
-     * holds executor slots for the whole chain, deadlocks under chained
-     * derivation (A→B→C exhausts every slot), and requires polling child
-     * status. Full reasoning: ADR-0011.
+     * <p><b>Why "wait for completion" was abandoned</b> — the original intent (parent blocks until
+     * children finish) was rejected because it holds executor slots for the whole chain, deadlocks
+     * under chained derivation (A→B→C exhausts every slot), and requires polling child status. Full
+     * reasoning: ADR-0011.
      *
-     * <p><b>Planned replacement</b> — chain progress via short-lived check
-     * tasks: each check task verifies the previous step, forwards the next
-     * one if warranted, and exits immediately, so no slot is held across the
-     * chain. This flag will be removed once that mechanism lands; do not use
-     * it in new plugins.
+     * <p><b>Planned replacement</b> — chain progress via short-lived check tasks: each check task
+     * verifies the previous step, forwards the next one if warranted, and exits immediately, so no
+     * slot is held across the chain. This flag will be removed once that mechanism lands; do not
+     * use it in new plugins.
      */
-    @Deprecated
-    private boolean forwardRequestMustWait=false;
+    @Deprecated private boolean forwardRequestMustWait = false;
 
     /**
      * Clean up and close all resources associated with this execution context.
      *
-     * <p>This method is automatically called by the Hercules Executor when task execution
-     * completes (either successfully or with an error). Plugin developers do not need to
-     * call this method manually.
+     * <p>This method is automatically called by the Hercules Executor when task execution completes
+     * (either successfully or with an error). Plugin developers do not need to call this method
+     * manually.
      *
      * <p>The cleanup process includes:
+     *
      * <ul>
-     *   <li>Closing the DuckDB connection</li>
-     *   <li>Closing any {@link Closeable} resources in the context map</li>
-     *   <li>Releasing any other system resources</li>
+     *   <li>Closing the DuckDB connection
+     *   <li>Closing any {@link Closeable} resources in the context map
+     *   <li>Releasing any other system resources
      * </ul>
      *
      * @throws IOException if an error occurs during resource cleanup
      */
     @Override
     public void close() throws IOException {
-        try{
-            if(duckdbConnection!=null && !duckdbConnection.isClosed()){
+        try {
+            if (duckdbConnection != null && !duckdbConnection.isClosed()) {
                 duckdbConnection.close();
             }
-            if(anotherContextMap!=null && !anotherContextMap.isEmpty()){
+            if (anotherContextMap != null && !anotherContextMap.isEmpty()) {
                 for (Object value : anotherContextMap.values()) {
-                    if(value instanceof Closeable){
+                    if (value instanceof Closeable) {
                         ((Closeable) value).close();
                     }
                 }
             }
-        } catch (Exception e){
+        } catch (Exception e) {
             throw new IOException(e);
         }
     }

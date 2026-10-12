@@ -1,26 +1,27 @@
 package team.magic.flute.hercules.twelve.labors;
 
+import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-import org.junit.jupiter.api.Tag;
 import team.magic.flute.hercules.twelve.labors.dao.entity.CmsDataDownloadTaskPO;
 import team.magic.flute.hercules.twelve.labors.service.CmsDataDownloadTaskService;
 
-import java.util.concurrent.TimeUnit;
-
 /**
- * Integration tests: boot the full twelve-labors Spring context against the
- * qa/test profile (MySQL). Tagged so the default {@code mvn test} run skips them.
+ * Integration tests: boot the full twelve-labors Spring context against the qa/test profile
+ * (MySQL). Tagged so the default {@code mvn test} run skips them.
  */
-@SpringBootTest(classes = {HerculesTwelveLaborsApplication.class}, webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)// Specify startup class
+@SpringBootTest(
+        classes = {HerculesTwelveLaborsApplication.class},
+        webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT) // Specify startup class
 @ActiveProfiles({"qa", "test"})
 @Tag("integration")
 public class Test01 {
 
-    @Autowired
-    private CmsDataDownloadTaskService taskService;
+    @Autowired private CmsDataDownloadTaskService taskService;
+
     public void test01() throws InterruptedException {
         System.out.println("test01");
         TimeUnit.HOURS.sleep(1);
@@ -33,15 +34,15 @@ public class Test01 {
 
     @Test
     public void test012() throws InterruptedException {
-        for(int i=0;i<10;i++){
-            taskService.saveOrUpdate(new CmsDataDownloadTaskPO()
-                    .setBusinessKey("test012")
-                    .setTaskStatus("INIT")
-                    .setFilePath("test/path")
-                    .setAppKey("app-key-001")
-                    .setUserId("1001")
-                    .setOperatorSource("web-console"));
+        for (int i = 0; i < 10; i++) {
+            taskService.saveOrUpdate(
+                    new CmsDataDownloadTaskPO()
+                            .setBusinessKey("test012")
+                            .setTaskStatus("INIT")
+                            .setFilePath("test/path")
+                            .setAppKey("app-key-001")
+                            .setUserId("1001")
+                            .setOperatorSource("web-console"));
         }
     }
-
 }

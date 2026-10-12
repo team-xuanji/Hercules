@@ -20,8 +20,9 @@
 
   <properties>
       <hercules.version>Nemean-Lion-1.0</hercules.version>
-      <maven.compiler.source>1.8</maven.compiler.source>
-      <maven.compiler.target>1.8</maven.compiler.target>
+      <maven.compiler.source>17</maven.compiler.source>
+      <maven.compiler.target>17</maven.compiler.target>
+      <maven.compiler.release>17</maven.compiler.release>
       <uuid-creator.version>6.1.1</uuid-creator.version>
       <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
       <commons-collections.version>4.5.0</commons-collections.version>
@@ -30,17 +31,30 @@
       <auto-service.version>1.1.1</auto-service.version>
       <commons-io.version>2.20.0</commons-io.version>
       <fory.version>0.14.1</fory.version>
-      <aircompressor.version>2.0.2</aircompressor.version><!--This is the last version that supports JDK 1.8-->
+      <aircompressor.version>2.0.2</aircompressor.version>
       <mysql-connector-java.version>8.0.33</mysql-connector-java.version>
       <bouncycastle.version>1.83</bouncycastle.version>
+      <feign-bom.version>13.6</feign-bom.version>
       <!-- spring -->
-      <spring-cloud.version>2021.0.8</spring-cloud.version>
-      <spring-boot.version>2.7.18</spring-boot.version>
+      <spring-boot.version>4.1.1</spring-boot.version>
+      <jackson.version>3.1.7</jackson.version>
+      <!-- Jackson 2 databind pinned for feign-jackson co-existence. -->
+      <jackson2-databind.version>2.21.2</jackson2-databind.version>
+      <!-- OkHttp: dropped from Boot 4 dependency management; pinned for
+           feign-okhttp + direct usage (executor / twelve-labors). -->
+      <okhttp.version>4.12.0</okhttp.version>
 
       <!-- DB -->
-      <mybatis-plus-boot-starter.version>3.5.14</mybatis-plus-boot-starter.version>
-      <mybatis-plus-generator.version>3.5.14</mybatis-plus-generator.version>
+      <mybatis-plus-boot-starter.version>3.5.17</mybatis-plus-boot-starter.version>
+      <mybatis-plus-generator.version>3.5.17</mybatis-plus-generator.version>
       <duckdb.version>1.5.6.0</duckdb.version><!--For operating systems that only support GCC4, you need to compile a version of DuckDB (version ≤ 1.2.2.0) that supports GCC4 yourself.-->
+
+      <!-- Build plugins -->
+      <maven-compiler-plugin.version>3.14.0</maven-compiler-plugin.version>
+      <git-commit-id-plugin.version>9.0.1</git-commit-id-plugin.version>
+      <spotless-plugin.version>2.45.0</spotless-plugin.version>
+      <google-java-format.version>1.28.0</google-java-format.version>
+      <maven-shade-plugin.version>3.6.1</maven-shade-plugin.version>
   </properties>
 
   <dependencies>
@@ -97,13 +111,7 @@
 <!--        <scope>provided</scope>-->
       </dependency>
 
-      <dependency>
-        <groupId>org.springframework.cloud</groupId>
-        <artifactId>spring-cloud-dependencies</artifactId>
-        <version>${spring-cloud.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
+      <!-- Spring Boot 4.x BOM (Spring Cloud removed: no Spring Cloud code/annotations in repo; Feign uses io.github.openfeign). -->
       <dependency>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-dependencies</artifactId>
@@ -112,18 +120,43 @@
         <scope>import</scope>
       </dependency>
 
+      <!-- Explicit Feign BOM (still used as a pin because Spring Boot 4 does not curate io.github.openfeign groupId). -->
+      <dependency>
+        <groupId>io.github.openfeign</groupId>
+        <artifactId>feign-bom</artifactId>
+        <version>${feign-bom.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+
+      <!-- Jackson 3 BOM -->
+      <dependency>
+        <groupId>tools.jackson</groupId>
+        <artifactId>jackson-bom</artifactId>
+        <version>${jackson.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+
       <!-- mybatis-spring-starter -->
         <dependency>
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-bom</artifactId>
-            <version>3.5.14</version>
+            <version>3.5.17</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
 
+      <!-- mybatis-spring-boot4-starter (Jakarta namespace; replaces mybatis-plus-boot-starter in Boot 4). -->
       <dependency>
         <groupId>com.baomidou</groupId>
-        <artifactId>mybatis-plus-boot-starter</artifactId>
+        <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
+        <version>${mybatis-plus-boot-starter.version}</version>
+      </dependency>
+      <!-- mybatis-plus-jsqlparser (JDK11+ replacement for mybatis-plus-jsqlparser-4.9 in the Boot4 series). -->
+      <dependency>
+        <groupId>com.baomidou</groupId>
+        <artifactId>mybatis-plus-jsqlparser</artifactId>
         <version>${mybatis-plus-boot-starter.version}</version>
       </dependency>
       <!-- mybatis-code-generator -->
@@ -156,12 +189,41 @@
         <version>${aliyun-sdk-oss.version}</version>
       </dependency>
 
-      <!--    <dependency>-->
-      <!--      <groupId>junit</groupId>-->
-      <!--      <artifactId>junit</artifactId>-->
-      <!--      <version>3.8.1</version>-->
-      <!--      <scope>test</scope>-->
-      <!--    </dependency>-->
+      <!-- Jackson 2 databind + annotations — kept for feign-jackson's co-existing ObjectMapper
+           (FeignConfig/FeignErrorDecoder). tools.jackson.databind.ext.javatime covers JSR-310; no
+           separate tools.jackson.datatype module needed. -->
+      <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-databind</artifactId>
+        <version>${jackson2-databind.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-annotations</artifactId>
+        <!-- Annotations release independently of databind: 2.21.2 databind pairs
+             with annotations 2.21 (latest 2.x annotations on Central). -->
+        <version>2.21</version>
+      </dependency>
+      <dependency>
+        <groupId>com.squareup.okhttp3</groupId>
+        <artifactId>okhttp</artifactId>
+        <version>${okhttp.version}</version>
+      </dependency>
+      <!-- Jackson 2 java.time module for the Feign-side ObjectMapper
+           (executor / twelve-labors FeignConfig). -->
+      <dependency>
+        <groupId>com.fasterxml.jackson.datatype</groupId>
+        <artifactId>jackson-datatype-jsr310</artifactId>
+        <version>${jackson2-databind.version}</version>
+      </dependency>
+
+      <!-- JUnit 5 + JUnit Platform baseline fix for Hercules-common. -->
+      <dependency>
+        <groupId>org.junit.jupiter</groupId>
+        <artifactId>junit-jupiter</artifactId>
+        <version>5.11.4</version>
+        <scope>test</scope>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
@@ -177,7 +239,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-surefire-plugin</artifactId>
-          <version>3.2.5</version>
+          <version>3.5.4</version>
           <configuration>
             <!-- Legacy JUnit 3 external-resource tests (DuckDB/OSS/network) cannot
                  be tagged, so exclude them by pattern everywhere. The JUnit 5
@@ -190,6 +252,68 @@
               <exclude>**/ExportPluginTest.java</exclude>
             </excludes>
           </configuration>
+        </plugin>
+
+        <!-- maven-compiler-plugin centralized to release=17 for all modules. -->
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>${maven-compiler-plugin.version}</version>
+          <configuration>
+            <release>17</release>
+            <encoding>UTF-8</encoding>
+          </configuration>
+        </plugin>
+
+        <!-- Spotless: in module poms that opt in, this enforces AOSP-style
+             formatting on the verify phase. Kept here only to pin version + style;
+             executions live per module so unrelated modules don't run spotless. -->
+        <plugin>
+          <groupId>com.diffplug.spotless</groupId>
+          <artifactId>spotless-maven-plugin</artifactId>
+          <version>${spotless-plugin.version}</version>
+          <configuration>
+            <java>
+              <googleJavaFormat>
+                <version>${google-java-format.version}</version>
+                <style>AOSP</style>
+              </googleJavaFormat>
+            </java>
+          </configuration>
+        </plugin>
+
+        <!-- git-commit-id: new artifactId io.github.git-commit-id (relocated from pl.project13.maven). -->
+        <plugin>
+          <groupId>io.github.git-commit-id</groupId>
+          <artifactId>git-commit-id-maven-plugin</artifactId>
+          <version>${git-commit-id-plugin.version}</version>
+          <configuration>
+            <failOnNoGitDirectory>false</failOnNoGitDirectory>
+            <generateGitPropertiesFile>true</generateGitPropertiesFile>
+            <dateFormat>yyyyMMddHHmmss</dateFormat>
+            <replacementProperties>
+              <replacementProperty>
+                <property>git.branch</property>
+                <token>/</token>
+                <value>-</value>
+              </replacementProperty>
+            </replacementProperties>
+          </configuration>
+          <executions>
+            <execution>
+              <id>get-the-git-infos</id>
+              <goals>
+                <goal>revision</goal>
+              </goals>
+              <phase>initialize</phase>
+            </execution>
+          </executions>
+        </plugin>
+
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-shade-plugin</artifactId>
+          <version>${maven-shade-plugin.version}</version>
         </plugin>
       </plugins>
     </pluginManagement>

@@ -1,21 +1,21 @@
 package team.magic.flute.hercules.executor.config;
 
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
-import team.magic.flute.hercules.common.plugin.PluginResourceInfo;
-import team.magic.flute.hercules.common.plugin.TaskPlugin;
-
 import java.net.URLClassLoader;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+import team.magic.flute.hercules.common.plugin.PluginResourceInfo;
+import team.magic.flute.hercules.common.plugin.TaskPlugin;
 
 @Slf4j
 public class TaskPluginContext {
-    private final ConcurrentHashMap<String,ConcurrentHashMap<String,TaskPluginContextDetail>> taskPluginContextDetailMap = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String,String> pluginGroupLatestVersion = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, ConcurrentHashMap<String, TaskPluginContextDetail>>
+            taskPluginContextDetailMap = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, String> pluginGroupLatestVersion =
+            new ConcurrentHashMap<>();
     private static final int MAX_KEEP_VERSIONS = 3;
 
     public Set<String> getPluginGroups() {
@@ -26,37 +26,45 @@ public class TaskPluginContext {
         return pluginGroupLatestVersion.get(pluginGroup);
     }
 
-    public void addContextDetail(PluginResourceInfo pluginResourceInfo, URLClassLoader urlClassLoader, Map<String,TaskPlugin> taskPluginMap) {
+    public void addContextDetail(
+            PluginResourceInfo pluginResourceInfo,
+            URLClassLoader urlClassLoader,
+            Map<String, TaskPlugin> taskPluginMap) {
         String pluginGroup = pluginResourceInfo.getPluginGroup();
         String pluginVersion = pluginResourceInfo.getVersionId();
-        TaskPluginContextDetail taskPluginContextDetail = new TaskPluginContextDetail()
-                .setPluginClassLoader(urlClassLoader)
-                .setPluginGroup(pluginGroup)
-                .setPluginVersion(pluginVersion)
-                .setPlugins(taskPluginMap)
-                .setPublishTime(LocalDateTime.now());
+        TaskPluginContextDetail taskPluginContextDetail =
+                new TaskPluginContextDetail()
+                        .setPluginClassLoader(urlClassLoader)
+                        .setPluginGroup(pluginGroup)
+                        .setPluginVersion(pluginVersion)
+                        .setPlugins(taskPluginMap)
+                        .setPublishTime(LocalDateTime.now());
 
-        taskPluginContextDetailMap.computeIfAbsent(pluginGroup, (key)->new ConcurrentHashMap<>())
+        taskPluginContextDetailMap
+                .computeIfAbsent(pluginGroup, (key) -> new ConcurrentHashMap<>())
                 .putIfAbsent(pluginVersion, taskPluginContextDetail);
         pluginGroupLatestVersion.put(pluginGroup, pluginVersion);
     }
 
-    public Map<String, TaskPlugin> getPluginMapByVersion(String pluginGroup,String pluginVersion) {
-        return Optional.ofNullable(taskPluginContextDetailMap.getOrDefault(pluginGroup,new ConcurrentHashMap<>())
-                        .getOrDefault(pluginVersion,new TaskPluginContextDetail())
-                        .getPlugins())
+    public Map<String, TaskPlugin> getPluginMapByVersion(String pluginGroup, String pluginVersion) {
+        return Optional.ofNullable(
+                        taskPluginContextDetailMap
+                                .getOrDefault(pluginGroup, new ConcurrentHashMap<>())
+                                .getOrDefault(pluginVersion, new TaskPluginContextDetail())
+                                .getPlugins())
                 .orElse(new HashMap<>());
     }
+
     public Map<String, TaskPlugin> getLatestPluginMap(String pluginGroup) {
-        return getPluginMapByVersion(pluginGroup,pluginGroupLatestVersion.get(pluginGroup));
+        return getPluginMapByVersion(pluginGroup, pluginGroupLatestVersion.get(pluginGroup));
     }
 
     public void initLatestPluginMap(String pluginGroup) {
         for (TaskPlugin value : getLatestPluginMap(pluginGroup).values()) {
-            try{
+            try {
                 value.init();
-            }catch (Exception e){
-                log.warn("Plugin initialization error! Plugin name: [{}]",value.getName());
+            } catch (Exception e) {
+                log.warn("Plugin initialization error! Plugin name: [{}]", value.getName());
             }
         }
     }
@@ -66,35 +74,55 @@ public class TaskPluginContext {
         if (StringUtils.isBlank(latestVersion)) {
             return;
         }
-        Map<String,TaskPluginContextDetail> allVersionInfo = Optional.ofNullable(taskPluginContextDetailMap.get(pluginGroup))
-                .orElse(new ConcurrentHashMap<>());
-        Set<String> tryDeleteVersions = allVersionInfo.keySet().stream().filter(key -> !key.equals(latestVersion)).collect(Collectors.toSet());
+        Map<String, TaskPluginContextDetail> allVersionInfo =
+                Optional.ofNullable(taskPluginContextDetailMap.get(pluginGroup))
+                        .orElse(new ConcurrentHashMap<>());
+        Set<String> tryDeleteVersions =
+                allVersionInfo.keySet().stream()
+                        .filter(key -> !key.equals(latestVersion))
+                        .collect(Collectors.toSet());
 
-        List<TaskPluginContextDetail> closedVersions = allVersionInfo.values().stream()
-                        .filter(taskPluginContextDetail -> tryDeleteVersions.contains(taskPluginContextDetail.getPluginVersion()))
-                .sorted(Comparator.comparing(TaskPluginContextDetail::getPublishTime)).collect(Collectors.toList());
-        if(closedVersions.size()>MAX_KEEP_VERSIONS){
-            closedVersions = closedVersions.stream().limit(closedVersions.size() -  MAX_KEEP_VERSIONS).collect(Collectors.toList());
+        List<TaskPluginContextDetail> closedVersions =
+                allVersionInfo.values().stream()
+                        .filter(
+                                taskPluginContextDetail ->
+                                        tryDeleteVersions.contains(
+                                                taskPluginContextDetail.getPluginVersion()))
+                        .sorted(Comparator.comparing(TaskPluginContextDetail::getPublishTime))
+                        .collect(Collectors.toList());
+        if (closedVersions.size() > MAX_KEEP_VERSIONS) {
+            closedVersions =
+                    closedVersions.stream()
+                            .limit(closedVersions.size() - MAX_KEEP_VERSIONS)
+                            .collect(Collectors.toList());
         }
         for (TaskPluginContextDetail taskContextDetail : closedVersions) {
             String oldVersion = taskContextDetail.getPluginVersion();
             Map<String, TaskPlugin> plugins = taskContextDetail.getPlugins();
-            if(plugins!=null){
+            if (plugins != null) {
                 for (Map.Entry<String, TaskPlugin> entry : plugins.entrySet()) {
                     String pluginName = entry.getKey();
                     TaskPlugin taskPlugin = entry.getValue();
-                    try{
+                    try {
                         taskPlugin.cleanUp();
                     } catch (Exception e) {
-                        log.error("Error while stop old plugin [{}],version[{}]",pluginName,oldVersion,e);
+                        log.error(
+                                "Error while stop old plugin [{}],version[{}]",
+                                pluginName,
+                                oldVersion,
+                                e);
                     }
                 }
             }
-            try{
+            try {
                 taskContextDetail.getPluginClassLoader().close();
                 allVersionInfo.remove(oldVersion);
             } catch (Exception e) {
-                log.error("Error while closing old ClassLoader for pluginGroup [{}],version[{}]",pluginGroup,oldVersion,e);
+                log.error(
+                        "Error while closing old ClassLoader for pluginGroup [{}],version[{}]",
+                        pluginGroup,
+                        oldVersion,
+                        e);
             }
         }
     }

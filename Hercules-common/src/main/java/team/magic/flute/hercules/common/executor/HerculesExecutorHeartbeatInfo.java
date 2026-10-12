@@ -1,12 +1,11 @@
 package team.magic.flute.hercules.common.executor;
 
+import java.util.List;
 import lombok.Data;
 import lombok.experimental.Accessors;
 
-import java.util.List;
-
 @Data
-@Accessors(chain=true)
+@Accessors(chain = true)
 public class HerculesExecutorHeartbeatInfo {
     private String executorId;
 
@@ -18,7 +17,7 @@ public class HerculesExecutorHeartbeatInfo {
 
     private Integer executorAvailableSlot;
 
-    private boolean enableDuckdb=true;
+    private boolean enableDuckdb = true;
 
     private ExecutorCurrentLoadPluginInfo executorLoadPluginInfo;
 

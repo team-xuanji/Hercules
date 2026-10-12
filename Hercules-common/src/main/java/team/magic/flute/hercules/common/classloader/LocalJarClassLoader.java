@@ -1,7 +1,5 @@
 package team.magic.flute.hercules.common.classloader;
 
-import lombok.extern.slf4j.Slf4j;
-
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
@@ -12,24 +10,27 @@ import java.util.Enumeration;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Local JAR File Class Loader
  *
- * <p>A custom class loader implementation that loads classes and resources directly from
- * a local JAR file. This class loader is designed for dynamic plugin loading in the
- * Hercules system, allowing plugins to be loaded at runtime from JAR files.
+ * <p>A custom class loader implementation that loads classes and resources directly from a local
+ * JAR file. This class loader is designed for dynamic plugin loading in the Hercules system,
+ * allowing plugins to be loaded at runtime from JAR files.
  *
  * <p>Key features:
+ *
  * <ul>
- *   <li>Direct JAR file loading without requiring classpath modifications</li>
- *   <li>Parent delegation support for accessing executor classes</li>
- *   <li>Resource caching for improved performance</li>
- *   <li>Optional automatic file cleanup on close</li>
- *   <li>Thread-safe concurrent access to cached resources</li>
+ *   <li>Direct JAR file loading without requiring classpath modifications
+ *   <li>Parent delegation support for accessing executor classes
+ *   <li>Resource caching for improved performance
+ *   <li>Optional automatic file cleanup on close
+ *   <li>Thread-safe concurrent access to cached resources
  * </ul>
  *
  * <p>Usage example:
+ *
  * <pre>{@code
  * File pluginJar = new File("/path/to/plugin.jar");
  * try (LocalJarClassLoader loader = new LocalJarClassLoader(pluginJar, getClass().getClassLoader())) {
@@ -39,9 +40,9 @@ import java.util.jar.JarFile;
  * }
  * }</pre>
  *
- * <p>The class loader maintains internal caches for both class files and resources to
- * improve performance during repeated access. It also supports automatic cleanup of
- * temporary JAR files when configured to do so.
+ * <p>The class loader maintains internal caches for both class files and resources to improve
+ * performance during repeated access. It also supports automatic cleanup of temporary JAR files
+ * when configured to do so.
  *
  * @author Hercules Team
  * @version 1.0
@@ -50,31 +51,27 @@ import java.util.jar.JarFile;
 @Slf4j
 public class LocalJarClassLoader extends ClassLoader implements Closeable {
 
-    /**
-     * URL stream handler for jar: protocol URLs.
-     */
+    /** URL stream handler for jar: protocol URLs. */
     private static final LocalJarURLStreamHandler urlStreamHandler = new LocalJarURLStreamHandler();
 
-    /**
-     * The JAR file being loaded by this class loader.
-     */
+    /** The JAR file being loaded by this class loader. */
     private File file;
 
     /**
-     * Whether to delete the JAR file when this class loader is closed.
-     * Useful for temporary plugin files.
+     * Whether to delete the JAR file when this class loader is closed. Useful for temporary plugin
+     * files.
      */
     private boolean deleteFileOnClose = false;
 
     /**
-     * Cache mapping class names to their file paths within the JAR.
-     * Improves performance by avoiding repeated JAR scanning.
+     * Cache mapping class names to their file paths within the JAR. Improves performance by
+     * avoiding repeated JAR scanning.
      */
     private ConcurrentHashMap<String, String> classFileCache = new ConcurrentHashMap<>();
 
     /**
-     * Cache mapping resource names to their URLs.
-     * Improves performance for repeated resource access.
+     * Cache mapping resource names to their URLs. Improves performance for repeated resource
+     * access.
      */
     private ConcurrentHashMap<String, URL> resourceUrlCache = new ConcurrentHashMap<>();
 
@@ -92,21 +89,22 @@ public class LocalJarClassLoader extends ClassLoader implements Closeable {
     /**
      * Create a new LocalJarClassLoader with configurable file deletion.
      *
-     * <p>This constructor allows you to specify whether the JAR file should be
-     * automatically deleted when the class loader is closed. This is useful
-     * for temporary plugin files that should be cleaned up after use.
+     * <p>This constructor allows you to specify whether the JAR file should be automatically
+     * deleted when the class loader is closed. This is useful for temporary plugin files that
+     * should be cleaned up after use.
      *
      * @param file the JAR file to load classes from
      * @param parent the parent class loader for delegation
      * @param deleteFileOnClose whether to delete the JAR file when closed
      * @throws IOException if the JAR file cannot be read or is invalid
      */
-    public LocalJarClassLoader(File file, ClassLoader parent, boolean deleteFileOnClose) throws IOException {
+    public LocalJarClassLoader(File file, ClassLoader parent, boolean deleteFileOnClose)
+            throws IOException {
         super(parent);
         this.file = file;
         this.deleteFileOnClose = deleteFileOnClose;
 
-        try (JarFile jarFile = new JarFile(file);) {
+        try (JarFile jarFile = new JarFile(file); ) {
 
             Enumeration<JarEntry> entries = jarFile.entries();
 
@@ -128,13 +126,8 @@ public class LocalJarClassLoader extends ClassLoader implements Closeable {
                     URL jarFileUrl = new URL(null, spec, urlStreamHandler);
                     resourceUrlCache.put(entryName, jarFileUrl);
                 }
-
-
             }
-
-
         }
-
     }
 
     @Override
@@ -170,14 +163,14 @@ public class LocalJarClassLoader extends ClassLoader implements Closeable {
     }
 
     private byte[] getFileAllBytes(String path) {
-        try (JarFile jarFile = new JarFile(file);) {
+        try (JarFile jarFile = new JarFile(file); ) {
 
             JarEntry jarEntry = jarFile.getJarEntry(path);
             if (jarEntry == null || jarEntry.isDirectory()) {
                 return null;
             }
 
-            try (InputStream inputStream = jarFile.getInputStream(jarEntry);) {
+            try (InputStream inputStream = jarFile.getInputStream(jarEntry); ) {
                 byte[] allBytes = new byte[(int) jarEntry.getSize()];
                 int position = 0;
 

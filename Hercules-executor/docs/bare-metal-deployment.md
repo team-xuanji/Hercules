@@ -44,7 +44,7 @@ Executor 构建产物为单一可执行 Spring Boot JAR（`spring-boot-maven-plu
 
 | 项 | 要求 |
 | --- | --- |
-| JRE | 与项目编译目标兼容：Java 8（`maven.compiler.source/target=1.8`）。可使用 JDK 8 对应的 JRE；更高版本 JRE 通常可运行，但项目以 Java 8 为准，按 8 部署最稳妥 |
+| JRE | 与项目编译目标兼容：**Java 17**（`maven.compiler.source/target=17`）。项目升级到 Spring Boot 4.1.1 后必须使用 JDK 17 的 JRE；更高版本（如 JDK 21）通常可运行，但以 17 部署最稳妥 |
 | OS | 任意支持 systemd 的 Linux 发行版 |
 | 网络 | 能访问 Hercules Manager 的 HTTP 端点、对象存储（OSS）endpoint |
 | 磁盘 | DuckDB data / spill 目录可写；插件缓存目录可写 |
@@ -308,4 +308,4 @@ DuckDB 由 `ExecutorProcessHandleImpl.initDuckdbDataSource()` 创建，仅当 `E
 - [ ] `hercules.security.http-encrypt-key` 已被生产密钥覆盖（非 `xxxxxxxxxx=`）
 - [ ] DuckDB data / spill 目录可写，且每实例独立路径
 - [ ] systemd 以非 root 用户 `hercules` 运行，`Restart=on-failure`
-- [ ] JRE 版本与 Java 8 兼容
+- [ ] JRE 版本与 Java 17 兼容（Spring Boot 4.1.1 要求 JDK 17）

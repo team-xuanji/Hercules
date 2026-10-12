@@ -1,26 +1,27 @@
 package team.magic.flute.hercules.manager.config;
 
 import com.github.f4b6a3.uuid.alt.GUID;
+import jakarta.annotation.PostConstruct;
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.EnvironmentAware;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 
-import javax.annotation.PostConstruct;
-
-
 @Configuration
 @Data
 public class RunnerEnv implements EnvironmentAware {
     private String runnerId;
+
     @Value("${hercules.security.http-encrypt-key}")
     private String httpEncryptKey;
+
     @Value("${hercules.task.max-chain-depth:32}")
     private int maxChainDepth;
+
     @Override
     public void setEnvironment(Environment environment) {
-        runnerId = GUID.v7().toString().replace("-","");
+        runnerId = GUID.v7().toString().replace("-", "");
     }
 
     /*
@@ -30,9 +31,12 @@ public class RunnerEnv implements EnvironmentAware {
      * silently in production, which is the worst failure shape.
      * */
     @PostConstruct
-    public void validateChainDepthConfig(){
-        if(maxChainDepth < 1){
-            throw new IllegalStateException("[INVALID_CONFIG] hercules.task.max-chain-depth must be >= 1, got ["+maxChainDepth+"]");
+    public void validateChainDepthConfig() {
+        if (maxChainDepth < 1) {
+            throw new IllegalStateException(
+                    "[INVALID_CONFIG] hercules.task.max-chain-depth must be >= 1, got ["
+                            + maxChainDepth
+                            + "]");
         }
     }
 }

@@ -1,5 +1,15 @@
 package team.magic.flute.hercules.manager.util;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static team.magic.flute.hercules.common.global.Constant.TASK_MAX_BUCKET_SIZE;
+
+import java.util.HashSet;
+import java.util.Set;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 import team.magic.flute.hercules.common.http.HerculesRunnableTaskInfo;
 import team.magic.flute.hercules.common.status.TaskStatus;
@@ -8,22 +18,10 @@ import team.magic.flute.hercules.manager.dao.po.HerculesTaskInfo;
 import team.magic.flute.hercules.manager.entity.recover.RecoverStrategy;
 import team.magic.flute.hercules.manager.entity.recover.impl.FixedIntervalStrategy;
 
-import java.util.HashSet;
-import java.util.Set;
-import java.util.regex.Pattern;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static team.magic.flute.hercules.common.global.Constant.TASK_MAX_BUCKET_SIZE;
-
 /**
- * Pure unit tests for {@link DTOConvertUtils#parse2TaskInfo}. No Spring context,
- * no DB, no encryption: the encrypt/decrypt branch is avoided by leaving
- * {@code encryptIV} blank. These tests pin the architecture invariants the
- * submission and forward-chain paths rely on.
+ * Pure unit tests for {@link DTOConvertUtils#parse2TaskInfo}. No Spring context, no DB, no
+ * encryption: the encrypt/decrypt branch is avoided by leaving {@code encryptIV} blank. These tests
+ * pin the architecture invariants the submission and forward-chain paths rely on.
  */
 class DTOConvertUtilsTest {
 
@@ -47,14 +45,16 @@ class DTOConvertUtilsTest {
         HerculesTaskInfo info = DTOConvertUtils.parse2TaskInfo(req, "ignoredKey", 0);
 
         assertNotNull(info.getId());
-        assertTrue(HEX32.matcher(info.getId()).matches(),
+        assertTrue(
+                HEX32.matcher(info.getId()).matches(),
                 "auto-generated id must be a 32-char hex GUID, was: " + info.getId());
     }
 
     @Test
     void nonBlankIdIsPreservedVerbatim() {
         HerculesRunnableTaskInfo req = baseRequest().setId("00230ffe4b0b56be12664020ec971bb1");
-        assertEquals("00230ffe4b0b56be12664020ec971bb1",
+        assertEquals(
+                "00230ffe4b0b56be12664020ec971bb1",
                 DTOConvertUtils.parse2TaskInfo(req, "ignoredKey", 0).getId());
     }
 
@@ -72,7 +72,9 @@ class DTOConvertUtilsTest {
         HerculesRunnableTaskInfo req = baseRequest().setChainDepth(999); // client lie
         HerculesTaskInfo info = DTOConvertUtils.parse2TaskInfo(req, "ignoredKey", 3);
 
-        assertEquals(3, info.getChainDepth(),
+        assertEquals(
+                3,
+                info.getChainDepth(),
                 "chainDepth must come from the caller-derived parameter, not the request body");
     }
 
@@ -84,9 +86,8 @@ class DTOConvertUtilsTest {
 
     @Test
     void forwardFromTypeAndSourceIdArePreserved() {
-        HerculesRunnableTaskInfo req = baseRequest()
-                .setFromType(TaskType.FORWARD)
-                .setFromSourceId("parent-task-id");
+        HerculesRunnableTaskInfo req =
+                baseRequest().setFromType(TaskType.FORWARD).setFromSourceId("parent-task-id");
         HerculesTaskInfo info = DTOConvertUtils.parse2TaskInfo(req, "ignoredKey", 1);
 
         assertEquals(TaskType.FORWARD.name(), info.getFromType());
@@ -101,23 +102,35 @@ class DTOConvertUtilsTest {
 
     @Test
     void explicitMaxRetryTimesIsPreserved() {
-        HerculesTaskInfo info = DTOConvertUtils.parse2TaskInfo(baseRequest().setMaxRetryTimes(42), "ignoredKey", 0);
+        HerculesTaskInfo info =
+                DTOConvertUtils.parse2TaskInfo(baseRequest().setMaxRetryTimes(42), "ignoredKey", 0);
         assertEquals(42, info.getMaxRetryTimes());
     }
 
     @Test
     void blankOrEmptyRecoverContextYieldsNullStrategy() {
-        assertNull(DTOConvertUtils.parse2TaskInfo(baseRequest().setAsyncRecoverContext(""), "k", 0).getAsyncRecoverContext());
-        assertNull(DTOConvertUtils.parse2TaskInfo(baseRequest().setAsyncRecoverContext("   "), "k", 0).getAsyncRecoverContext());
-        assertNull(DTOConvertUtils.parse2TaskInfo(baseRequest().setAsyncRecoverContext("{}"), "k", 0).getAsyncRecoverContext());
+        assertNull(
+                DTOConvertUtils.parse2TaskInfo(baseRequest().setAsyncRecoverContext(""), "k", 0)
+                        .getAsyncRecoverContext());
+        assertNull(
+                DTOConvertUtils.parse2TaskInfo(baseRequest().setAsyncRecoverContext("   "), "k", 0)
+                        .getAsyncRecoverContext());
+        assertNull(
+                DTOConvertUtils.parse2TaskInfo(baseRequest().setAsyncRecoverContext("{}"), "k", 0)
+                        .getAsyncRecoverContext());
         // "{}" with surrounding whitespace must also be treated as no strategy.
-        assertNull(DTOConvertUtils.parse2TaskInfo(baseRequest().setAsyncRecoverContext("  {}  "), "k", 0).getAsyncRecoverContext());
+        assertNull(
+                DTOConvertUtils.parse2TaskInfo(
+                                baseRequest().setAsyncRecoverContext("  {}  "), "k", 0)
+                        .getAsyncRecoverContext());
     }
 
     @Test
     void validRecoverContextDeserializesIntoStrategy() {
         String json = "{\"recoverStrategyType\":\"FIXED_INTERVAL\"}";
-        RecoverStrategy strategy = DTOConvertUtils.parse2TaskInfo(baseRequest().setAsyncRecoverContext(json), "k", 0).getAsyncRecoverContext();
+        RecoverStrategy strategy =
+                DTOConvertUtils.parse2TaskInfo(baseRequest().setAsyncRecoverContext(json), "k", 0)
+                        .getAsyncRecoverContext();
         assertNotNull(strategy);
         assertTrue(strategy instanceof FixedIntervalStrategy);
     }
@@ -131,13 +144,19 @@ class DTOConvertUtilsTest {
         // is not deterministic (covered by nullHashKeyFallsBackToRandomBucketInRange).
         // Include strings whose hashCode is negative (e.g. "polygenelubricants") to
         // exercise the floorMod overflow guard.
-        for (String key : new String[]{"a", "polygenelubricants", "order-123", "shard-99", "!@#$%"}) {
-            int bucket = DTOConvertUtils.parse2TaskInfo(baseRequest().setHashKey(key), "k", 0).getBucketId();
-            assertTrue(bucket >= 1 && bucket <= TASK_MAX_BUCKET_SIZE,
+        for (String key :
+                new String[] {"a", "polygenelubricants", "order-123", "shard-99", "!@#$%"}) {
+            int bucket =
+                    DTOConvertUtils.parse2TaskInfo(baseRequest().setHashKey(key), "k", 0)
+                            .getBucketId();
+            assertTrue(
+                    bucket >= 1 && bucket <= TASK_MAX_BUCKET_SIZE,
                     "bucket out of range for key '" + key + "': " + bucket);
             // Same key must map to the same bucket every time (deterministic routing).
-            assertEquals(bucket,
-                    DTOConvertUtils.parse2TaskInfo(baseRequest().setHashKey(key), "k", 0).getBucketId());
+            assertEquals(
+                    bucket,
+                    DTOConvertUtils.parse2TaskInfo(baseRequest().setHashKey(key), "k", 0)
+                            .getBucketId());
             seen.add(bucket);
         }
         // Multiple distinct keys should not all collapse to one bucket (sanity).
@@ -161,6 +180,8 @@ class DTOConvertUtilsTest {
     void contextCopiedWhenNoEncryptIv() {
         // With a blank encryptIV the decrypt branch is skipped; context is stored as-is.
         String ctx = "{\"plain\":true}";
-        assertEquals(ctx, DTOConvertUtils.parse2TaskInfo(baseRequest().setContext(ctx), "k", 0).getContext());
+        assertEquals(
+                ctx,
+                DTOConvertUtils.parse2TaskInfo(baseRequest().setContext(ctx), "k", 0).getContext());
     }
 }

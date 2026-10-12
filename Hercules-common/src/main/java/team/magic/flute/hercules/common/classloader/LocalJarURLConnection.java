@@ -13,9 +13,8 @@ public class LocalJarURLConnection extends JarURLConnection {
      * Creates the new JarURLConnection to the specified URL.
      *
      * @param url the URL
-     * @throws MalformedURLException if no legal protocol
-     *                               could be found in a specification string or the
-     *                               string could not be parsed.
+     * @throws MalformedURLException if no legal protocol could be found in a specification string
+     *     or the string could not be parsed.
      */
     protected LocalJarURLConnection(URL url) throws MalformedURLException {
         super(url);
@@ -28,13 +27,10 @@ public class LocalJarURLConnection extends JarURLConnection {
     }
 
     @Override
-    public void connect() throws IOException {
-
-    }
+    public void connect() throws IOException {}
 
     @Override
     public InputStream getInputStream() throws IOException {
         return new LocalJarInputStream(this);
     }
-
 }

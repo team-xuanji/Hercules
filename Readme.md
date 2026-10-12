@@ -6,8 +6,8 @@
 ![heracles_logo.png](heracles_logo.png)
 
 [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE)
-[![Java](https://img.shields.io/badge/Java-8+-orange.svg)](https://openjdk.java.net/)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-2.7+-green.svg)](https://spring.io/projects/spring-boot)
+[![Java](https://img.shields.io/badge/Java-17-orange.svg)](https://openjdk.java.net/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.1-green.svg)](https://spring.io/projects/spring-boot)
 [![DuckDB](https://img.shields.io/badge/DuckDB-Integrated-yellow.svg)](https://duckdb.org/)
 
 ## 📚 Documentation
@@ -462,13 +462,13 @@ todo:
 
 ### Prerequisites
 
-- **Java 8+**: Required for running all Hercules services (JDK 8, 11, 17+ all supported)
+- **Java 17**: Required for running all Hercules services (Spring Boot 4.1.1 no longer supports JDK 8/11)
 - **Maven 3.6+**: For building the project from source
 - **MySQL 8.0+**: Database for task management and system state
 - **Object Storage**: OSS (Alibaba Cloud) or S3 (AWS) for plugin and file storage
 - **(Optional) Docker & Docker Compose**: For containerized deployment
 
-> **Note**: The project supports JDK 8+ with upgraded Spring Boot version. Tested and compatible with JDK 8, 11, and 17+.
+> **Note**: Built and tested on Eclipse Temurin JDK 17 (LTS), the only Java version required by Spring Boot 4.1.1.
 
 > **Important**: The current version uses MySQL tables as the storage medium for task message forwarding. This provides reliable task distribution without requiring additional message queue infrastructure. Future versions will support extensible message distribution mediums (Redis, RabbitMQ, etc.).
 
@@ -556,7 +556,7 @@ docker build -t hercules-twelve-labors:latest -f Hercules-twelve-labors/Dockerfi
 3. **Memory Issues During Build**
    ```bash
    # Increase Maven memory
-   export MAVEN_OPTS="-Xmx2g -XX:MaxPermSize=512m"
+   export MAVEN_OPTS="-Xmx2g -XX:MaxRAMPercentage=50.0"
    mvn clean package -DskipTests
    ```
 

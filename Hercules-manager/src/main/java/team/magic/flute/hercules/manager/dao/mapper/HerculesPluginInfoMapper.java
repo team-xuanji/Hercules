@@ -1,11 +1,8 @@
 package team.magic.flute.hercules.manager.dao.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import team.magic.flute.hercules.manager.dao.po.HerculesPluginInfoPo;
 import org.apache.ibatis.annotations.Mapper;
-
+import team.magic.flute.hercules.manager.dao.po.HerculesPluginInfoPo;
 
 @Mapper
-public interface HerculesPluginInfoMapper extends BaseMapper<HerculesPluginInfoPo> {
-
-}
+public interface HerculesPluginInfoMapper extends BaseMapper<HerculesPluginInfoPo> {}

@@ -1,26 +1,27 @@
 package team.magic.flute.hercules.executor.service;
 
-import team.magic.flute.hercules.common.http.PluginDesc;
-import team.magic.flute.hercules.common.http.HerculesRunnableTaskInfo;
-
 import java.io.IOException;
 import java.util.Map;
+import team.magic.flute.hercules.common.http.HerculesRunnableTaskInfo;
+import team.magic.flute.hercules.common.http.PluginDesc;
 
 /**
  * Executor Process Handle Interface
  *
- * <p>This interface defines the core operations for task execution processing in the Hercules Executor.
- * It provides methods for task handling, resource management, and plugin loading capabilities.
+ * <p>This interface defines the core operations for task execution processing in the Hercules
+ * Executor. It provides methods for task handling, resource management, and plugin loading
+ * capabilities.
  *
- * <p>The interface abstracts the execution engine functionality, allowing for different implementations
- * while maintaining a consistent API for task processing and resource management.
+ * <p>The interface abstracts the execution engine functionality, allowing for different
+ * implementations while maintaining a consistent API for task processing and resource management.
  *
  * <p>Key responsibilities include:
+ *
  * <ul>
- *   <li>Task execution and lifecycle management</li>
- *   <li>Execution slot management and capacity monitoring</li>
- *   <li>Dynamic plugin loading and management</li>
- *   <li>Resource allocation and cleanup</li>
+ *   <li>Task execution and lifecycle management
+ *   <li>Execution slot management and capacity monitoring
+ *   <li>Dynamic plugin loading and management
+ *   <li>Resource allocation and cleanup
  * </ul>
  *
  * @author Hercules Team
@@ -53,27 +54,26 @@ public interface ExecutorProcessHandle {
     /**
      * Get the number of available execution slots.
      *
-     * <p>Returns the current number of free execution slots that can accept new tasks.
-     * This is calculated as total slots minus currently active tasks.
+     * <p>Returns the current number of free execution slots that can accept new tasks. This is
+     * calculated as total slots minus currently active tasks.
      *
      * @return the number of available execution slots
      */
     long aliveAbleSlot();
 
     /**
-     * Get the number of task infos this executor can accept on top of the
-     * currently active ones — i.e. how many tasks a single fetch+lock round
-     * should ask for. Includes both free slots and the remaining queue
-     * headroom ({@code 3 x totalSlot}), and never goes below zero.
+     * Get the number of task infos this executor can accept on top of the currently active ones —
+     * i.e. how many tasks a single fetch+lock round should ask for. Includes both free slots and
+     * the remaining queue headroom ({@code 3 x totalSlot}), and never goes below zero.
      *
      * @return the number of additional tasks the executor can buffer
      */
     long queueCapacity();
 
     /**
-     * Whether the executor is saturated: no free slot and the internal queue
-     * is more than half full. Used by the consumer to back off fetch frequency
-     * before the executor runs out of buffering headroom.
+     * Whether the executor is saturated: no free slot and the internal queue is more than half
+     * full. Used by the consumer to back off fetch frequency before the executor runs out of
+     * buffering headroom.
      *
      * @return true when there is no free slot and queue usage exceeds 50%
      */
@@ -82,9 +82,9 @@ public interface ExecutorProcessHandle {
     /**
      * Load plugins for a specific plugin group.
      *
-     * <p>This method downloads and loads plugin JAR files for the specified plugin group,
-     * making them available for task execution. The plugins are cached for performance
-     * and automatically updated when new versions are available.
+     * <p>This method downloads and loads plugin JAR files for the specified plugin group, making
+     * them available for task execution. The plugins are cached for performance and automatically
+     * updated when new versions are available.
      *
      * @param pluginGroup the plugin group identifier to load
      * @throws IOException if plugin loading fails due to network or file system issues
@@ -93,6 +93,7 @@ public interface ExecutorProcessHandle {
 
     /**
      * Display the currently loaded plugin information for the executor
+     *
      * @return
      */
     Map<String, PluginDesc> showCurrentLoadPlugin();

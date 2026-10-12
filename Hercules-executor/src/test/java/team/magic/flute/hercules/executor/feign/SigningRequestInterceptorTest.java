@@ -1,30 +1,24 @@
 package team.magic.flute.hercules.executor.feign;
 
-import feign.RequestTemplate;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
-import team.magic.flute.hercules.common.util.ExecutorInfoUtils;
-import team.magic.flute.hercules.executor.config.RunnerEnv;
-
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import feign.RequestTemplate;
+import java.util.Collection;
+import java.util.Map;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
+import team.magic.flute.hercules.common.util.ExecutorInfoUtils;
+import team.magic.flute.hercules.executor.config.RunnerEnv;
+
 /**
- * Offline unit tests for {@link SigningRequestInterceptor}. Builds a real
- * {@link RequestTemplate}, injects a fixed identity via {@link RunnerEnv},
- * applies the interceptor, and asserts that the four signing headers are
- * present and that the signature verifies against the canonical message
+ * Offline unit tests for {@link SigningRequestInterceptor}. Builds a real {@link RequestTemplate},
+ * injects a fixed identity via {@link RunnerEnv}, applies the interceptor, and asserts that the
+ * four signing headers are present and that the signature verifies against the canonical message
  * rebuilt by hand. No Spring context.
  */
 class SigningRequestInterceptorTest {
@@ -80,8 +74,7 @@ class SigningRequestInterceptorTest {
         // Rebuild canonical exactly as the server would, from the same fields.
         String cq = ExecutorInfoUtils.canonicalQuery(template.queries());
         String bodySha = ExecutorInfoUtils.bodySha(template.body());
-        assertTrue(ExecutorInfoUtils.verifyRequest(
-                IDENTITY, op, subject, ts, cq, bodySha, sig));
+        assertTrue(ExecutorInfoUtils.verifyRequest(IDENTITY, op, subject, ts, cq, bodySha, sig));
     }
 
     @Test
@@ -109,18 +102,28 @@ class SigningRequestInterceptorTest {
         // Each verifies against its own canonical, and fails against the other's.
         String cq1 = ExecutorInfoUtils.canonicalQuery(t1.queries());
         String bs1 = ExecutorInfoUtils.bodySha(t1.body());
-        assertTrue(ExecutorInfoUtils.verifyRequest(
-                IDENTITY, "FINISH", "task-1",
-                firstHeader(t1, ExecutorInfoUtils.HEADER_TIMESTAMP),
-                cq1, bs1, sig1));
+        assertTrue(
+                ExecutorInfoUtils.verifyRequest(
+                        IDENTITY,
+                        "FINISH",
+                        "task-1",
+                        firstHeader(t1, ExecutorInfoUtils.HEADER_TIMESTAMP),
+                        cq1,
+                        bs1,
+                        sig1));
 
         String cq2 = ExecutorInfoUtils.canonicalQuery(t2.queries());
         String bs2 = ExecutorInfoUtils.bodySha(t2.body());
         // Cross-check: sig1 does NOT verify with t2's bodySha
-        assertFalseQuietly(ExecutorInfoUtils.verifyRequest(
-                IDENTITY, "FINISH", "task-1",
-                firstHeader(t1, ExecutorInfoUtils.HEADER_TIMESTAMP),
-                cq2, bs2, sig1));
+        assertFalseQuietly(
+                ExecutorInfoUtils.verifyRequest(
+                        IDENTITY,
+                        "FINISH",
+                        "task-1",
+                        firstHeader(t1, ExecutorInfoUtils.HEADER_TIMESTAMP),
+                        cq2,
+                        bs2,
+                        sig1));
     }
 
     @Test
@@ -159,8 +162,7 @@ class SigningRequestInterceptorTest {
         String sig = firstHeader(template, ExecutorInfoUtils.HEADER_SIGNATURE);
         String cq = ExecutorInfoUtils.canonicalQuery(template.queries());
         String bs = ExecutorInfoUtils.bodySha(template.body());
-        String expected = ExecutorInfoUtils.signRequest(
-                IDENTITY, "FETCH", "exec-1", ts, cq, bs);
+        String expected = ExecutorInfoUtils.signRequest(IDENTITY, "FETCH", "exec-1", ts, cq, bs);
         assertEquals(expected, sig);
     }
 

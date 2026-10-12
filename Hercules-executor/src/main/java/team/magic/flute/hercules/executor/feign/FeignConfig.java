@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
@@ -17,16 +16,14 @@ import feign.codec.ErrorDecoder;
 import feign.jackson.JacksonDecoder;
 import feign.jackson.JacksonEncoder;
 import feign.slf4j.Slf4jLogger;
-import okhttp3.ConnectionPool;
-import okhttp3.OkHttpClient;
-
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.concurrent.TimeUnit;
-
+import okhttp3.ConnectionPool;
+import okhttp3.OkHttpClient;
 
 public class FeignConfig {
     private static final String BASIC_DATE_TIME_FORMAT = "yyyy-MM-dd HH:mm:ss";
@@ -43,26 +40,40 @@ public class FeignConfig {
 
     static {
         JavaTimeModule javaTimeModule = new JavaTimeModule();
-        javaTimeModule.addSerializer(LocalDateTime.class, new LocalDateTimeSerializer(DateTimeFormatter.ofPattern(BASIC_DATE_TIME_FORMAT)));
-        javaTimeModule.addSerializer(LocalDate.class, new LocalDateSerializer(DateTimeFormatter.ofPattern(BASIC_DATE_FORMAT)));
-        javaTimeModule.addSerializer(LocalTime.class, new LocalTimeSerializer(DateTimeFormatter.ofPattern(BASIC_TIME_FORMAT)));
-        javaTimeModule.addDeserializer(LocalDateTime.class, new LocalDateTimeDeserializer(DateTimeFormatter.ofPattern(BASIC_DATE_TIME_FORMAT)));
-        javaTimeModule.addDeserializer(LocalDate.class, new LocalDateDeserializer(DateTimeFormatter.ofPattern(BASIC_DATE_FORMAT)));
-        javaTimeModule.addDeserializer(LocalTime.class, new LocalTimeDeserializer(DateTimeFormatter.ofPattern(BASIC_TIME_FORMAT)));
-        objectMapper = new ObjectMapper()
-                .registerModule(javaTimeModule)
-                .setSerializationInclusion(JsonInclude.Include.NON_NULL)
-                .configure(SerializationFeature.INDENT_OUTPUT, true)
-                .setDateFormat(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"))
-                .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
-                .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+        javaTimeModule.addSerializer(
+                LocalDateTime.class,
+                new LocalDateTimeSerializer(DateTimeFormatter.ofPattern(BASIC_DATE_TIME_FORMAT)));
+        javaTimeModule.addSerializer(
+                LocalDate.class,
+                new LocalDateSerializer(DateTimeFormatter.ofPattern(BASIC_DATE_FORMAT)));
+        javaTimeModule.addSerializer(
+                LocalTime.class,
+                new LocalTimeSerializer(DateTimeFormatter.ofPattern(BASIC_TIME_FORMAT)));
+        javaTimeModule.addDeserializer(
+                LocalDateTime.class,
+                new LocalDateTimeDeserializer(DateTimeFormatter.ofPattern(BASIC_DATE_TIME_FORMAT)));
+        javaTimeModule.addDeserializer(
+                LocalDate.class,
+                new LocalDateDeserializer(DateTimeFormatter.ofPattern(BASIC_DATE_FORMAT)));
+        javaTimeModule.addDeserializer(
+                LocalTime.class,
+                new LocalTimeDeserializer(DateTimeFormatter.ofPattern(BASIC_TIME_FORMAT)));
+        objectMapper =
+                new ObjectMapper()
+                        .registerModule(javaTimeModule)
+                        .setSerializationInclusion(JsonInclude.Include.NON_NULL)
+                        .configure(SerializationFeature.INDENT_OUTPUT, true)
+                        .setDateFormat(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"))
+                        .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
+                        .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
 
-        okHttpClient = new OkHttpClient.Builder()
-                .readTimeout(30, TimeUnit.SECONDS)
-                .connectTimeout(30, TimeUnit.SECONDS)
-                .writeTimeout(40, TimeUnit.SECONDS)
-                .connectionPool(new ConnectionPool())
-                .build();
+        okHttpClient =
+                new OkHttpClient.Builder()
+                        .readTimeout(30, TimeUnit.SECONDS)
+                        .connectTimeout(30, TimeUnit.SECONDS)
+                        .writeTimeout(40, TimeUnit.SECONDS)
+                        .connectionPool(new ConnectionPool())
+                        .build();
         feignOkHttpClient = new feign.okhttp.OkHttpClient(okHttpClient);
 
         feignInterceptor = new FeignInterceptor();

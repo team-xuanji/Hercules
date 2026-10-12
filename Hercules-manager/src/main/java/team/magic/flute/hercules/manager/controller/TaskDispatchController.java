@@ -1,8 +1,14 @@
 package team.magic.flute.hercules.manager.controller;
 
+import static team.magic.flute.hercules.common.global.Constant.*;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.google.common.collect.Lists;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,112 +32,110 @@ import team.magic.flute.hercules.manager.vo.FinishOneTaskRequestVO;
 import team.magic.flute.hercules.manager.vo.PluginRegisterImplVO;
 import team.magic.flute.hercules.manager.web.CachedBodyFilter;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
-import java.nio.charset.StandardCharsets;
-import java.util.*;
-import java.util.stream.Collectors;
-
-import static team.magic.flute.hercules.common.global.Constant.*;
-
 /**
- * If the Executor itself cannot access any external infrastructure
- * (such as MQ or Database), it can use this set of interfaces to
- * obtain and execute tasks.
+ * If the Executor itself cannot access any external infrastructure (such as MQ or Database), it can
+ * use this set of interfaces to obtain and execute tasks.
  *
- * <p>Every endpoint here is authenticated by the header-based signature
- * protocol (ADR-0016): {@code X-Hercules-Op}/{@code X-Hercules-Subject} are
- * read from the request, and {@code X-Hercules-Timestamp}/{@code X-Hercules-Signature}
- * are checked against the canonical message built from the decoded query
- * ({@link HttpServletRequest#getParameterMap()}) and the SHA-256 of the raw
- * body ({@link CachedBodyFilter#RAW_BODY_ATTR}). Rejection is uniform
- * ("Invalid executor identity signature.") so the endpoints do not act as
- * oracles for which check a probe failed (ADR-0001).
+ * <p>Every endpoint here is authenticated by the header-based signature protocol (ADR-0016): {@code
+ * X-Hercules-Op}/{@code X-Hercules-Subject} are read from the request, and {@code
+ * X-Hercules-Timestamp}/{@code X-Hercules-Signature} are checked against the canonical message
+ * built from the decoded query ({@link HttpServletRequest#getParameterMap()}) and the SHA-256 of
+ * the raw body ({@link CachedBodyFilter#RAW_BODY_ATTR}). Rejection is uniform ("Invalid executor
+ * identity signature.") so the endpoints do not act as oracles for which check a probe failed
+ * (ADR-0001).
  */
 @RestController
 @RequestMapping("/taskDispatch")
 @Slf4j
 public class TaskDispatchController {
-    @Autowired
-    private HerculesExecutorTasksService executorTasksService;
+    @Autowired private HerculesExecutorTasksService executorTasksService;
 
-    @Autowired
-    private HerculesExecutorInfoService executorInfoService;
+    @Autowired private HerculesExecutorInfoService executorInfoService;
 
-    @Autowired
-    private RunnerEnv runnerEnv;
-    @Autowired
-    private HerculesPluginManagerService pluginManagerService;
+    @Autowired private RunnerEnv runnerEnv;
+    @Autowired private HerculesPluginManagerService pluginManagerService;
 
-
-    private TaskFetchResult fetchTasks(String executorId,
-                      String executorRegion,
-                      Integer fetchLimit,
-                      boolean encrypt){
-        Tuple2<Integer,Integer> fetchRange = executorInfoService.getConsumeRange(executorId,executorRegion);
+    private TaskFetchResult fetchTasks(
+            String executorId, String executorRegion, Integer fetchLimit, boolean encrypt) {
+        Tuple2<Integer, Integer> fetchRange =
+                executorInfoService.getConsumeRange(executorId, executorRegion);
         int begin = fetchRange.getKey();
         int end = fetchRange.getValue();
-        boolean crossAllBucket = begin==1 && end == TASK_MAX_BUCKET_SIZE+1;
-        List<HerculesTaskInfo> taskInfoList = executorTasksService.list(new LambdaQueryWrapper<HerculesTaskInfo>()
-                .eq(HerculesTaskInfo::getStatus, TaskStatus.INIT.name())
-                .eq(HerculesTaskInfo::getExecutorRegion,executorRegion)
-                .eq(HerculesTaskInfo::isEnable,true)
-                .ge(HerculesTaskInfo::getBucketId,begin)
-                .lt(HerculesTaskInfo::getBucketId,end)
-                .isNull(HerculesTaskInfo::getOwnerId)
-                .orderByAsc(HerculesTaskInfo::getInsertTime)
-                .last("LIMIT "+fetchLimit));
-        if(taskInfoList.isEmpty()){
-            log.warn("Unable to retrieve task information.range[{}],executorId[{}],executorRegion[{}]", JacksonUtils.writeValueAsString(fetchRange),executorId,executorRegion);
+        boolean crossAllBucket = begin == 1 && end == TASK_MAX_BUCKET_SIZE + 1;
+        List<HerculesTaskInfo> taskInfoList =
+                executorTasksService.list(
+                        new LambdaQueryWrapper<HerculesTaskInfo>()
+                                .eq(HerculesTaskInfo::getStatus, TaskStatus.INIT.name())
+                                .eq(HerculesTaskInfo::getExecutorRegion, executorRegion)
+                                .eq(HerculesTaskInfo::isEnable, true)
+                                .ge(HerculesTaskInfo::getBucketId, begin)
+                                .lt(HerculesTaskInfo::getBucketId, end)
+                                .isNull(HerculesTaskInfo::getOwnerId)
+                                .orderByAsc(HerculesTaskInfo::getInsertTime)
+                                .last("LIMIT " + fetchLimit));
+        if (taskInfoList.isEmpty()) {
+            log.warn(
+                    "Unable to retrieve task information.range[{}],executorId[{}],executorRegion[{}]",
+                    JacksonUtils.writeValueAsString(fetchRange),
+                    executorId,
+                    executorRegion);
             return new TaskFetchResult();
         }
-        List<HerculesRunnableTaskInfo> data =  taskInfoList.stream().map(x-> DTOConvertUtils.parse2RunnableTaskInfo(x,encrypt, runnerEnv.getHttpEncryptKey(), AESUtils.generateIV()))
-                .collect(Collectors.toList());
-        return new TaskFetchResult()
-                .setCrossPartition(crossAllBucket)
-                .setTaskInfoList(data);
+        List<HerculesRunnableTaskInfo> data =
+                taskInfoList.stream()
+                        .map(
+                                x ->
+                                        DTOConvertUtils.parse2RunnableTaskInfo(
+                                                x,
+                                                encrypt,
+                                                runnerEnv.getHttpEncryptKey(),
+                                                AESUtils.generateIV()))
+                        .collect(Collectors.toList());
+        return new TaskFetchResult().setCrossPartition(crossAllBucket).setTaskInfoList(data);
     }
 
     @GetMapping("/tryFetchTasksWithByteArray")
-    public ResponseEntity<byte[]> tryFetchTasksWithByteArray(@RequestParam("executorId") String executorId,
-                                                             @RequestParam("executorRegion") String executorRegion,
-                                                             @RequestParam(value = "fetchLimit",required = false) Integer fetchLimit,
-                                                             HttpServletRequest request){
+    public ResponseEntity<byte[]> tryFetchTasksWithByteArray(
+            @RequestParam("executorId") String executorId,
+            @RequestParam("executorRegion") String executorRegion,
+            @RequestParam(value = "fetchLimit", required = false) Integer fetchLimit,
+            HttpServletRequest request) {
         if (isInvalidExecutorOp(request, executorId, executorRegion, ExecutorTaskOps.FETCH)) {
-            return  ResponseEntity.badRequest()
+            return ResponseEntity.badRequest()
                     .body("Invalid executor identity signature.".getBytes(StandardCharsets.UTF_8));
-
         }
-        if(fetchLimit==null || fetchLimit<=0){
+        if (fetchLimit == null || fetchLimit <= 0) {
             fetchLimit = 10;
         }
         TaskFetchResult fetchTasks = fetchTasks(executorId, executorRegion, fetchLimit, false);
         byte[] data = new byte[0];
         HttpHeaders headers;
         byte[] compressed;
-        if(!fetchTasks.isEmpty()){
+        if (!fetchTasks.isEmpty()) {
             data = ForyUtils.serialize(fetchTasks);
             compressed = BinaryCompressUtils.compress(data, HerculesHttpCompressType.ZSTD);
             int originalCompressedLength = compressed.length;
             String aesKey = runnerEnv.getHttpEncryptKey();
             String aesIV = AESUtils.generateIV();
             compressed = AESUtils.encrypt(compressed, aesKey, aesIV);
-            headers = getHttpHeaders(data, compressed,aesIV,originalCompressedLength);
-        }else{
+            headers = getHttpHeaders(data, compressed, aesIV, originalCompressedLength);
+        } else {
             compressed = data;
-            headers = getHttpHeaders(data, compressed,null,null);
+            headers = getHttpHeaders(data, compressed, null, null);
         }
         return new ResponseEntity<>(compressed, headers, HttpStatus.OK);
     }
 
-    private static HttpHeaders getHttpHeaders(byte[] data, byte[] compressed,String aesIV,Integer originalCompressedLength) {
+    private static HttpHeaders getHttpHeaders(
+            byte[] data, byte[] compressed, String aesIV, Integer originalCompressedLength) {
         HttpHeaders headers = new HttpHeaders();
-        if(aesIV!=null){
-            headers.set(HERCULES_BINARY_RESP_AES_IV,aesIV);
+        if (aesIV != null) {
+            headers.set(HERCULES_BINARY_RESP_AES_IV, aesIV);
             headers.set(HERCULES_BINARY_RESP_ORIGINALS_SIZE, String.valueOf(data.length));
-            headers.set(HERCULES_BINARY_RESP_COMPRESSED_SIZE, String.valueOf(originalCompressedLength));
+            headers.set(
+                    HERCULES_BINARY_RESP_COMPRESSED_SIZE, String.valueOf(originalCompressedLength));
             headers.set(HERCULES_BINARY_RESP_COMPRESS_TYPE, HerculesHttpCompressType.ZSTD.name());
-        }else{
+        } else {
             headers.set(HERCULES_BINARY_RESP_ORIGINALS_SIZE, String.valueOf(data.length));
             headers.set(HERCULES_BINARY_RESP_COMPRESSED_SIZE, String.valueOf(compressed.length));
             headers.set(HERCULES_BINARY_RESP_COMPRESS_TYPE, HerculesHttpCompressType.ZSTD.name());
@@ -143,56 +147,64 @@ public class TaskDispatchController {
     }
 
     @PutMapping("/tryLockOneTask")
-    public BaseResponse<Boolean> tryLockOneTask(@RequestParam("executorId") String executorId,
-                                                @RequestParam("executorRegion") String executorRegion,
-                                                @RequestParam("taskId") String taskId,
-                                                HttpServletRequest request){
+    public BaseResponse<Boolean> tryLockOneTask(
+            @RequestParam("executorId") String executorId,
+            @RequestParam("executorRegion") String executorRegion,
+            @RequestParam("taskId") String taskId,
+            HttpServletRequest request) {
         if (isInvalidExecutorOp(request, executorId, executorRegion, ExecutorTaskOps.LOCK)) {
             return BaseResponse.fail("Invalid executor identity signature.");
         }
-        BatchTaskLockProcessResult data = doLockTasks(
-                Collections.singletonList(taskId), executorId, executorRegion);
-        TaskInfoLockResult lockResult = Optional.ofNullable(data.getLockResults())
-                .orElse(new HashMap<>()).get(taskId);
+        BatchTaskLockProcessResult data =
+                doLockTasks(Collections.singletonList(taskId), executorId, executorRegion);
+        TaskInfoLockResult lockResult =
+                Optional.ofNullable(data.getLockResults()).orElse(new HashMap<>()).get(taskId);
         if (lockResult == null)
-            // This should not happen in theory, because there is no corresponding logic for the tryLockBatchTask method.
+            // This should not happen in theory, because there is no corresponding logic for the
+            // tryLockBatchTask method.
             return BaseResponse.fail("Unknown Error!");
-        switch (lockResult){
+        switch (lockResult) {
             case NOT_EXIST:
-                return BaseResponse.fail(StrFormat.format("Task does not exist! TaskId = [{}]", taskId));
+                return BaseResponse.fail(
+                        StrFormat.format("Task does not exist! TaskId = [{}]", taskId));
             case PLUGIN_DRIFT:
-                return BaseResponse.fail(StrFormat.format(
-                        "PLUGIN_DRIFTED: task [{}] cancelled, plugin handle not registered under its group.", taskId));
+                return BaseResponse.fail(
+                        StrFormat.format(
+                                "PLUGIN_DRIFTED: task [{}] cancelled, plugin handle not registered under its group.",
+                                taskId));
             case NOT_CLAIMED:
                 return BaseResponse.success(false);
             case REGION_MISMATCH:
-                return BaseResponse.fail(StrFormat.format("Region mismatch, task [{}] lock refused.", taskId));
+                return BaseResponse.fail(
+                        StrFormat.format("Region mismatch, task [{}] lock refused.", taskId));
             case SUCCESS:
                 return BaseResponse.success(true);
             default:
-                return BaseResponse.fail(StrFormat.format("Unexpected lock result [{}] for task [{}].", lockResult, taskId));
+                return BaseResponse.fail(
+                        StrFormat.format(
+                                "Unexpected lock result [{}] for task [{}].", lockResult, taskId));
         }
     }
 
     /**
-     * Batch-lock entry point. Verifies the executor signature (bound to the
-     * sorted task-id subject, see {@code ExecutorInfoUtils.buildSignSubject}),
-     * classifies every requested id, cancels tasks whose pluginHandle has
-     * drifted from its group, and claims the remainder with a single
-     * conditional UPDATE. One {@link TaskInfoLockResult} is reported per
-     * requested id; a null {@code lockResults} map is only possible for an
-     * empty request. Signing scheme: ADR-0016.
+     * Batch-lock entry point. Verifies the executor signature (bound to the sorted task-id subject,
+     * see {@code ExecutorInfoUtils.buildSignSubject}), classifies every requested id, cancels tasks
+     * whose pluginHandle has drifted from its group, and claims the remainder with a single
+     * conditional UPDATE. One {@link TaskInfoLockResult} is reported per requested id; a null
+     * {@code lockResults} map is only possible for an empty request. Signing scheme: ADR-0016.
      */
     @PutMapping("/tryLockBatchTask")
-    public BaseResponse<BatchTaskLockProcessResult> tryLockBatchTask(@Valid @RequestBody BatchLockRequest batchLockRequest,
-                                                                     HttpServletRequest request){
-        Set<String> taskIds = Optional.ofNullable(batchLockRequest.getTaskIds())
-                .orElse(new ArrayList<>())
-                .stream().filter(Objects::nonNull).collect(Collectors.toSet());
-        if(taskIds.isEmpty()){
+    public BaseResponse<BatchTaskLockProcessResult> tryLockBatchTask(
+            @Valid @RequestBody BatchLockRequest batchLockRequest, HttpServletRequest request) {
+        Set<String> taskIds =
+                Optional.ofNullable(batchLockRequest.getTaskIds())
+                        .orElse(new ArrayList<>())
+                        .stream()
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toSet());
+        if (taskIds.isEmpty()) {
             log.info("taskIds is empty.");
-            return BaseResponse.success(new BatchTaskLockProcessResult()
-                    .setAllSuccess(false));
+            return BaseResponse.success(new BatchTaskLockProcessResult().setAllSuccess(false));
         }
         String executorId = batchLockRequest.getExecutorId();
         String executorRegion = batchLockRequest.getExecutorRegion();
@@ -203,44 +215,47 @@ public class TaskDispatchController {
     }
 
     /**
-     * Core lock logic shared by the single and batch entry points. Assumes
-     * the signature has already been verified by the caller — it must not be
-     * called from anywhere that did not authenticate, because nothing else
-     * guards the conditional UPDATE below.
+     * Core lock logic shared by the single and batch entry points. Assumes the signature has
+     * already been verified by the caller — it must not be called from anywhere that did not
+     * authenticate, because nothing else guards the conditional UPDATE below.
      */
-    private BatchTaskLockProcessResult doLockTasks(Collection<String> requestedTaskIds,
-                                                                  String executorId,
-                                                                  String executorRegion){
+    private BatchTaskLockProcessResult doLockTasks(
+            Collection<String> requestedTaskIds, String executorId, String executorRegion) {
         boolean allSuccess = false;
-        Set<String> taskIds = requestedTaskIds.stream().filter(Objects::nonNull).collect(Collectors.toSet());
-        if(taskIds.isEmpty()){
+        Set<String> taskIds =
+                requestedTaskIds.stream().filter(Objects::nonNull).collect(Collectors.toSet());
+        if (taskIds.isEmpty()) {
             log.info("taskIds is empty.");
-            return new BatchTaskLockProcessResult()
-                    .setAllSuccess(allSuccess);
+            return new BatchTaskLockProcessResult().setAllSuccess(allSuccess);
         }
-        List<HerculesTaskInfo> taskInfo = executorTasksService.list(new LambdaQueryWrapper<HerculesTaskInfo>()
-                .in(HerculesTaskInfo::getId, taskIds));
-        Map<String,TaskInfoLockResult> missMatchTasks = findMissMatchTasks(taskIds,taskInfo,executorRegion);
+        List<HerculesTaskInfo> taskInfo =
+                executorTasksService.list(
+                        new LambdaQueryWrapper<HerculesTaskInfo>()
+                                .in(HerculesTaskInfo::getId, taskIds));
+        Map<String, TaskInfoLockResult> missMatchTasks =
+                findMissMatchTasks(taskIds, taskInfo, executorRegion);
         Map<String, TaskInfoLockResult> tryLockResults = new HashMap<>(missMatchTasks);
-        List<HerculesTaskInfo> inRegionTaskInfo = taskInfo.stream()
-                .filter(x->!missMatchTasks.containsKey(x.getId()))
-                .collect(Collectors.toList());
-        if(inRegionTaskInfo.isEmpty()){
+        List<HerculesTaskInfo> inRegionTaskInfo =
+                taskInfo.stream()
+                        .filter(x -> !missMatchTasks.containsKey(x.getId()))
+                        .collect(Collectors.toList());
+        if (inRegionTaskInfo.isEmpty()) {
             return new BatchTaskLockProcessResult()
                     .setAllSuccess(allSuccess)
                     .setLockResults(tryLockResults);
         }
         Set<String> pluginDriftedTasks = cancelIfDriftedTask(inRegionTaskInfo);
         pluginDriftedTasks.forEach(id -> tryLockResults.put(id, TaskInfoLockResult.PLUGIN_DRIFT));
-        Set<String> correctTaskIds = inRegionTaskInfo
-                .stream()
-                .map(HerculesTaskInfo::getId)
-                .filter(id ->!pluginDriftedTasks.contains(id))
-                .collect(Collectors.toSet());
-        if(!correctTaskIds.isEmpty()){
-            Map<String,TaskInfoLockResult> lockResult = lockBatchTask(correctTaskIds,executorRegion,executorId);
+        Set<String> correctTaskIds =
+                inRegionTaskInfo.stream()
+                        .map(HerculesTaskInfo::getId)
+                        .filter(id -> !pluginDriftedTasks.contains(id))
+                        .collect(Collectors.toSet());
+        if (!correctTaskIds.isEmpty()) {
+            Map<String, TaskInfoLockResult> lockResult =
+                    lockBatchTask(correctTaskIds, executorRegion, executorId);
             tryLockResults.putAll(lockResult);
-            if(tryLockResults.values().stream().allMatch(r -> r == TaskInfoLockResult.SUCCESS)){
+            if (tryLockResults.values().stream().allMatch(r -> r == TaskInfoLockResult.SUCCESS)) {
                 allSuccess = true;
             }
         }
@@ -249,122 +264,147 @@ public class TaskDispatchController {
                 .setLockResults(tryLockResults);
     }
 
-
     @PutMapping("/finishOneTask")
-    public BaseResponse<Boolean> finishOneTask(@Valid @RequestBody FinishOneTaskRequestVO requestVO,
-                                               HttpServletRequest request){
+    public BaseResponse<Boolean> finishOneTask(
+            @Valid @RequestBody FinishOneTaskRequestVO requestVO, HttpServletRequest request) {
         if (isInvalidExecutorOp(request, requestVO.getExecutorId(), null, ExecutorTaskOps.FINISH)) {
             return BaseResponse.fail("Invalid executor identity signature.");
         }
-        LambdaUpdateWrapper<HerculesTaskInfo> updateWrapper = new LambdaUpdateWrapper<HerculesTaskInfo>()
-                .eq(HerculesTaskInfo::getId,requestVO.getTaskId())
-                .eq(HerculesTaskInfo::getOwnerId,requestVO.getExecutorId())
-                .eq(HerculesTaskInfo::getStatus, TaskStatus.RUNNING.name())
-                .set(HerculesTaskInfo::getCheckPointInfo,requestVO.getCheckPointInfo())
-                .set(HerculesTaskInfo::getStatus,TaskStatus.SUCCESS.name());
+        LambdaUpdateWrapper<HerculesTaskInfo> updateWrapper =
+                new LambdaUpdateWrapper<HerculesTaskInfo>()
+                        .eq(HerculesTaskInfo::getId, requestVO.getTaskId())
+                        .eq(HerculesTaskInfo::getOwnerId, requestVO.getExecutorId())
+                        .eq(HerculesTaskInfo::getStatus, TaskStatus.RUNNING.name())
+                        .set(HerculesTaskInfo::getCheckPointInfo, requestVO.getCheckPointInfo())
+                        .set(HerculesTaskInfo::getStatus, TaskStatus.SUCCESS.name());
         return BaseResponse.success(executorTasksService.update(updateWrapper));
     }
 
     @PutMapping("/abandonOneTask")
-    public BaseResponse<Boolean> abandonOneTask(@RequestParam("executorId") String executorId,
-                                                @RequestParam("taskId") String taskId,
-                                                HttpServletRequest request){
+    public BaseResponse<Boolean> abandonOneTask(
+            @RequestParam("executorId") String executorId,
+            @RequestParam("taskId") String taskId,
+            HttpServletRequest request) {
         if (isInvalidExecutorOp(request, executorId, null, ExecutorTaskOps.ABANDON)) {
             return BaseResponse.fail("Invalid executor identity signature.");
         }
-        LambdaUpdateWrapper<HerculesTaskInfo> updateWrapper = new LambdaUpdateWrapper<HerculesTaskInfo>()
-                .eq(HerculesTaskInfo::getId,taskId)
-                .eq(HerculesTaskInfo::getOwnerId,executorId)
-                .eq(HerculesTaskInfo::getStatus, TaskStatus.RUNNING.name())
-                .set(HerculesTaskInfo::getCheckPointInfo,null)
-                .set(HerculesTaskInfo::getStatus,TaskStatus.INIT.name())
-                .set(HerculesTaskInfo::getOwnerId,null);
+        LambdaUpdateWrapper<HerculesTaskInfo> updateWrapper =
+                new LambdaUpdateWrapper<HerculesTaskInfo>()
+                        .eq(HerculesTaskInfo::getId, taskId)
+                        .eq(HerculesTaskInfo::getOwnerId, executorId)
+                        .eq(HerculesTaskInfo::getStatus, TaskStatus.RUNNING.name())
+                        .set(HerculesTaskInfo::getCheckPointInfo, null)
+                        .set(HerculesTaskInfo::getStatus, TaskStatus.INIT.name())
+                        .set(HerculesTaskInfo::getOwnerId, null);
         return BaseResponse.success(executorTasksService.update(updateWrapper));
     }
 
     @PutMapping("/failOneTask")
-    public BaseResponse<Boolean> failOneTask(@RequestParam("executorId") String executorId,
-                                             @RequestParam("taskId") String taskId,
-                                             HttpServletRequest request){
+    public BaseResponse<Boolean> failOneTask(
+            @RequestParam("executorId") String executorId,
+            @RequestParam("taskId") String taskId,
+            HttpServletRequest request) {
         if (isInvalidExecutorOp(request, executorId, null, ExecutorTaskOps.FAIL)) {
             return BaseResponse.fail("Invalid executor identity signature.");
         }
         HerculesTaskInfo taskInfo = executorTasksService.getById(taskId);
-        if(taskInfo==null){
-            return BaseResponse.fail(StrFormat.format("Task does not exist!TaskId = [{}]",taskId));
+        if (taskInfo == null) {
+            return BaseResponse.fail(StrFormat.format("Task does not exist!TaskId = [{}]", taskId));
         }
-        LambdaUpdateWrapper<HerculesTaskInfo> updateWrapper = new LambdaUpdateWrapper<HerculesTaskInfo>()
-                .eq(HerculesTaskInfo::getId,taskId)
-                .eq(HerculesTaskInfo::getOwnerId,executorId)
-                .eq(HerculesTaskInfo::getStatus, TaskStatus.RUNNING.name())
-                .set(HerculesTaskInfo::getCheckPointInfo,null)
-                .set(HerculesTaskInfo::getStatus,TaskStatus.FAILED.name());
+        LambdaUpdateWrapper<HerculesTaskInfo> updateWrapper =
+                new LambdaUpdateWrapper<HerculesTaskInfo>()
+                        .eq(HerculesTaskInfo::getId, taskId)
+                        .eq(HerculesTaskInfo::getOwnerId, executorId)
+                        .eq(HerculesTaskInfo::getStatus, TaskStatus.RUNNING.name())
+                        .set(HerculesTaskInfo::getCheckPointInfo, null)
+                        .set(HerculesTaskInfo::getStatus, TaskStatus.FAILED.name());
         return BaseResponse.success(executorTasksService.update(updateWrapper));
     }
 
     /**
-     * Authenticate a signed executor operation against the header-based
-     * signature protocol (ADR-0016). The {@code subject} is read from the
-     * {@code X-Hercules-Subject} header (executorId for FETCH, taskId for the
-     * single ops, the sorted id list for batch lock). {@code op} is the
-     * endpoint's expected operation; the client's OP header must carry the
-     * same value (the canonical message uses it, so a mismatch makes the
-     * signature unverifiable). {@code executorRegion} follows the existing
-     * semantics: a non-blank value is checked against the executor's registered
-     * region (FETCH, single/batch LOCK); null skips the check
+     * Authenticate a signed executor operation against the header-based signature protocol
+     * (ADR-0016). The {@code subject} is read from the {@code X-Hercules-Subject} header
+     * (executorId for FETCH, taskId for the single ops, the sorted id list for batch lock). {@code
+     * op} is the endpoint's expected operation; the client's OP header must carry the same value
+     * (the canonical message uses it, so a mismatch makes the signature unverifiable). {@code
+     * executorRegion} follows the existing semantics: a non-blank value is checked against the
+     * executor's registered region (FETCH, single/batch LOCK); null skips the check
      * (ABANDON/FAIL/FINISH).
      *
-     * <p>Rejection responses are uniform ("Invalid executor identity
-     * signature.") with reasons logged server-side under
-     * {@code [INVALID_EXECUTOR_OP]} — the endpoints must not act as oracles
-     * for which check a probe failed (ADR-0001).
+     * <p>Rejection responses are uniform ("Invalid executor identity signature.") with reasons
+     * logged server-side under {@code [INVALID_EXECUTOR_OP]} — the endpoints must not act as
+     * oracles for which check a probe failed (ADR-0001).
      */
-    private boolean isInvalidExecutorOp(HttpServletRequest request,
-                                        String executorId,
-                                        String executorRegion,
-                                        ExecutorTaskOps op) {
+    private boolean isInvalidExecutorOp(
+            HttpServletRequest request,
+            String executorId,
+            String executorRegion,
+            ExecutorTaskOps op) {
         HerculesExecutorInfo executor = executorInfoService.getById(executorId);
         if (executor == null) {
-            log.warn("[INVALID_EXECUTOR_OP] Unknown executor [{}] attempted op [{}].",
-                    executorId, op);
+            log.warn(
+                    "[INVALID_EXECUTOR_OP] Unknown executor [{}] attempted op [{}].",
+                    executorId,
+                    op);
             return true;
         }
         if (StringUtils.isNotBlank(executorRegion)
                 && !Objects.equals(executor.getExecutorRegion(), executorRegion)) {
-            log.warn("[INVALID_EXECUTOR_OP] Region mismatch: executor [{}] registered in [{}], claimed [{}], op [{}].",
-                    executorId, executor.getExecutorRegion(), executorRegion, op);
+            log.warn(
+                    "[INVALID_EXECUTOR_OP] Region mismatch: executor [{}] registered in [{}], claimed [{}], op [{}].",
+                    executorId,
+                    executor.getExecutorRegion(),
+                    executorRegion,
+                    op);
             return true;
         }
         String headerOp = header(request, ExecutorInfoUtils.HEADER_OP);
         String subject = header(request, ExecutorInfoUtils.HEADER_SUBJECT);
         String timestamp = header(request, ExecutorInfoUtils.HEADER_TIMESTAMP);
         String signature = header(request, ExecutorInfoUtils.HEADER_SIGNATURE);
-        if (StringUtils.isBlank(headerOp) || StringUtils.isBlank(subject)
-                || StringUtils.isBlank(timestamp) || StringUtils.isBlank(signature)) {
-            log.warn("[INVALID_EXECUTOR_OP] Missing signing header(s): executor [{}], op [{}].",
-                    executorId, op);
+        if (StringUtils.isBlank(headerOp)
+                || StringUtils.isBlank(subject)
+                || StringUtils.isBlank(timestamp)
+                || StringUtils.isBlank(signature)) {
+            log.warn(
+                    "[INVALID_EXECUTOR_OP] Missing signing header(s): executor [{}], op [{}].",
+                    executorId,
+                    op);
             return true;
         }
         // The OP header must match the endpoint's expected op — otherwise the
         // client signed a different canonical than the server will verify.
         if (!headerOp.equals(op.name())) {
-            log.warn("[INVALID_EXECUTOR_OP] Op header [{}] does not match expected [{}]: executor [{}].",
-                    headerOp, op, executorId);
+            log.warn(
+                    "[INVALID_EXECUTOR_OP] Op header [{}] does not match expected [{}]: executor [{}].",
+                    headerOp,
+                    op,
+                    executorId);
             return true;
         }
         if (!ExecutorInfoUtils.isFreshTimestamp(timestamp, System.currentTimeMillis())) {
-            log.warn("[INVALID_EXECUTOR_OP] Stale/unparseable timestamp: executor [{}], op [{}].",
-                    executorId, op);
+            log.warn(
+                    "[INVALID_EXECUTOR_OP] Stale/unparseable timestamp: executor [{}], op [{}].",
+                    executorId,
+                    op);
             return true;
         }
         String canonicalQuery = ExecutorInfoUtils.canonicalQuery(request.getParameterMap());
         byte[] rawBody = (byte[]) request.getAttribute(CachedBodyFilter.RAW_BODY_ATTR);
         String bodySha = ExecutorInfoUtils.bodySha(rawBody);
         if (!ExecutorInfoUtils.verifyRequest(
-                executor.getIdentityId(), op.name(), subject, timestamp,
-                canonicalQuery, bodySha, signature)) {
-            log.warn("[INVALID_EXECUTOR_OP] Signature verification failed: executor [{}], op [{}], subject [{}].",
-                    executorId, op, subject);
+                executor.getIdentityId(),
+                op.name(),
+                subject,
+                timestamp,
+                canonicalQuery,
+                bodySha,
+                signature)) {
+            log.warn(
+                    "[INVALID_EXECUTOR_OP] Signature verification failed: executor [{}], op [{}], subject [{}].",
+                    executorId,
+                    op,
+                    subject);
             return true;
         }
         return false;
@@ -381,32 +421,46 @@ public class TaskDispatchController {
         return value;
     }
 
-    private Set<String> cancelIfDriftedTask(List<HerculesTaskInfo> inRegionTaskInfo){
+    private Set<String> cancelIfDriftedTask(List<HerculesTaskInfo> inRegionTaskInfo) {
         Set<String> cancelSet = new HashSet<>();
-        Map<String, Map<String, Set<String>>> groupedTaskInfo = inRegionTaskInfo.stream()
-                .collect(Collectors.groupingBy(
-                        HerculesTaskInfo::getPluginGroup,
-                        Collectors.groupingBy(
-                                HerculesTaskInfo::getPluginHandle,
-                                Collectors.mapping(
-                                        HerculesTaskInfo::getId,
-                                        Collectors.toSet()))));
+        Map<String, Map<String, Set<String>>> groupedTaskInfo =
+                inRegionTaskInfo.stream()
+                        .collect(
+                                Collectors.groupingBy(
+                                        HerculesTaskInfo::getPluginGroup,
+                                        Collectors.groupingBy(
+                                                HerculesTaskInfo::getPluginHandle,
+                                                Collectors.mapping(
+                                                        HerculesTaskInfo::getId,
+                                                        Collectors.toSet()))));
         Set<String> pluginDriftedTasks = new HashSet<>();
-        groupedTaskInfo.forEach( (pluginGroup,innerGroup) -> {
-            List<PluginRegisterImplVO> implVOList = Optional.ofNullable(pluginManagerService.searchPluginImplInfo(pluginGroup))
-                    .orElse(new ArrayList<>());
-            Set<String> pluginHandlersInSingleGroup = implVOList.stream().map(PluginRegisterImplVO::getPluginHandle).collect(Collectors.toSet());
-            innerGroup.forEach( (pluginHandle,groupedTaskIds) -> {
-                if(!pluginHandlersInSingleGroup.contains(pluginHandle)){
-                    groupedTaskIds.forEach(taskId -> {
-                        pluginDriftedTasks.add(taskId);
-                        String info = StrFormat.format("PLUGIN_DRIFTED: handle [{}] not registered under group [{}] at lock attempt; task cancelled.",pluginHandle,pluginGroup);
-                        log.warn(info);
-                    });
-                }
-            });
-        });
-        if(!pluginDriftedTasks.isEmpty()){
+        groupedTaskInfo.forEach(
+                (pluginGroup, innerGroup) -> {
+                    List<PluginRegisterImplVO> implVOList =
+                            Optional.ofNullable(
+                                            pluginManagerService.searchPluginImplInfo(pluginGroup))
+                                    .orElse(new ArrayList<>());
+                    Set<String> pluginHandlersInSingleGroup =
+                            implVOList.stream()
+                                    .map(PluginRegisterImplVO::getPluginHandle)
+                                    .collect(Collectors.toSet());
+                    innerGroup.forEach(
+                            (pluginHandle, groupedTaskIds) -> {
+                                if (!pluginHandlersInSingleGroup.contains(pluginHandle)) {
+                                    groupedTaskIds.forEach(
+                                            taskId -> {
+                                                pluginDriftedTasks.add(taskId);
+                                                String info =
+                                                        StrFormat.format(
+                                                                "PLUGIN_DRIFTED: handle [{}] not registered under group [{}] at lock attempt; task cancelled.",
+                                                                pluginHandle,
+                                                                pluginGroup);
+                                                log.warn(info);
+                                            });
+                                }
+                            });
+                });
+        if (!pluginDriftedTasks.isEmpty()) {
             /*
              * Considering that users may re-register plugins and modify the mapping between
              * pluginGroup and PluginHandle, we should reject tasks that use an incorrect mapping.
@@ -419,81 +473,95 @@ public class TaskDispatchController {
              * it should theoretically request the tryLockOneTask method again;
              * at that point we can handle it correctly.
              * */
-            String info = "PLUGIN_DRIFTED: plugin group/handle mapping no longer registered at lock attempt; task cancelled.";
-            LambdaUpdateWrapper<HerculesTaskInfo> failedStatUpdateWrapper = new LambdaUpdateWrapper<HerculesTaskInfo>()
-                    .in(HerculesTaskInfo::getId,pluginDriftedTasks)
-                    .eq(HerculesTaskInfo::getStatus, TaskStatus.INIT.name())
-                    .eq(HerculesTaskInfo::isEnable,true)
-                    .set(HerculesTaskInfo::getStatus, TaskStatus.CANCELLED.name())
-                    .set(HerculesTaskInfo::getOwnerId,null)
-                    .set(HerculesTaskInfo::getCheckPointInfo,info);
+            String info =
+                    "PLUGIN_DRIFTED: plugin group/handle mapping no longer registered at lock attempt; task cancelled.";
+            LambdaUpdateWrapper<HerculesTaskInfo> failedStatUpdateWrapper =
+                    new LambdaUpdateWrapper<HerculesTaskInfo>()
+                            .in(HerculesTaskInfo::getId, pluginDriftedTasks)
+                            .eq(HerculesTaskInfo::getStatus, TaskStatus.INIT.name())
+                            .eq(HerculesTaskInfo::isEnable, true)
+                            .set(HerculesTaskInfo::getStatus, TaskStatus.CANCELLED.name())
+                            .set(HerculesTaskInfo::getOwnerId, null)
+                            .set(HerculesTaskInfo::getCheckPointInfo, info);
             executorTasksService.update(failedStatUpdateWrapper);
             cancelSet.addAll(pluginDriftedTasks);
         }
         return cancelSet;
     }
 
-    private Map<String,TaskInfoLockResult> findMissMatchTasks(Set<String> taskIds,List<HerculesTaskInfo> taskInDB,String executorRegion){
+    private Map<String, TaskInfoLockResult> findMissMatchTasks(
+            Set<String> taskIds, List<HerculesTaskInfo> taskInDB, String executorRegion) {
         Map<String, TaskInfoLockResult> lockResults = new HashMap<>();
-        taskInDB.stream().filter(Objects::nonNull)
-                .filter(x->!Objects.equals(x.getExecutorRegion(),executorRegion)).forEach(task -> {
-                    lockResults.putIfAbsent(task.getId(),TaskInfoLockResult.REGION_MISMATCH);
-                });
-        List<HerculesTaskInfo> inRegionTaskInfo = taskInDB
-                .stream()
-                .filter(x->Objects.equals(x.getExecutorRegion(),executorRegion))
-                .collect(Collectors.toList());
-        Set<String> existsTasks =  inRegionTaskInfo.stream()
-                .map(HerculesTaskInfo::getId)
-                .collect(Collectors.toSet());
+        taskInDB.stream()
+                .filter(Objects::nonNull)
+                .filter(x -> !Objects.equals(x.getExecutorRegion(), executorRegion))
+                .forEach(
+                        task -> {
+                            lockResults.putIfAbsent(
+                                    task.getId(), TaskInfoLockResult.REGION_MISMATCH);
+                        });
+        List<HerculesTaskInfo> inRegionTaskInfo =
+                taskInDB.stream()
+                        .filter(x -> Objects.equals(x.getExecutorRegion(), executorRegion))
+                        .collect(Collectors.toList());
+        Set<String> existsTasks =
+                inRegionTaskInfo.stream().map(HerculesTaskInfo::getId).collect(Collectors.toSet());
         Set<String> notExistsIds = new HashSet<>(taskIds);
         notExistsIds.removeAll(existsTasks);
-        notExistsIds.forEach(taskId -> {
-            lockResults.putIfAbsent(taskId,TaskInfoLockResult.NOT_EXIST);
-        });
+        notExistsIds.forEach(
+                taskId -> {
+                    lockResults.putIfAbsent(taskId, TaskInfoLockResult.NOT_EXIST);
+                });
         return lockResults;
     }
 
     /**
-     * Claim tasks with one conditional UPDATE (status=INIT, enabled, no owner),
-     * then re-read the affected rows to classify them: rows now owned by this
-     * executor are SUCCESS, anything else is reported as NOT_CLAIMED.
+     * Claim tasks with one conditional UPDATE (status=INIT, enabled, no owner), then re-read the
+     * affected rows to classify them: rows now owned by this executor are SUCCESS, anything else is
+     * reported as NOT_CLAIMED.
      *
-     * <p>The UPDATE is atomic per row, so two competing executors can never
-     * co-own a task. Races between the UPDATE and the re-read (e.g. a task
-     * being reset by dead-task recovery in between) can only yield a
-     * pessimistic NOT_CLAIMED — a safe outcome for callers to retry.
+     * <p>The UPDATE is atomic per row, so two competing executors can never co-own a task. Races
+     * between the UPDATE and the re-read (e.g. a task being reset by dead-task recovery in between)
+     * can only yield a pessimistic NOT_CLAIMED — a safe outcome for callers to retry.
      */
-    private Map<String,TaskInfoLockResult> lockBatchTask(Set<String> taskIds,String executorRegion,String executorId) {
+    private Map<String, TaskInfoLockResult> lockBatchTask(
+            Set<String> taskIds, String executorRegion, String executorId) {
         Map<String, TaskInfoLockResult> lockResults = new HashMap<>();
         Set<String> correctTaskIds = new HashSet<>(taskIds);
-        LambdaUpdateWrapper<HerculesTaskInfo> updateWrapper = new LambdaUpdateWrapper<HerculesTaskInfo>()
-                .in(HerculesTaskInfo::getId,correctTaskIds)
-                .eq(HerculesTaskInfo::getStatus, TaskStatus.INIT.name())
-                .eq(HerculesTaskInfo::getExecutorRegion,executorRegion)
-                .eq(HerculesTaskInfo::isEnable,true)
-                .isNull(HerculesTaskInfo::getOwnerId)
-                .set(HerculesTaskInfo::getOwnerId,executorId)
-                .set(HerculesTaskInfo::getStatus,TaskStatus.RUNNING.name());
+        LambdaUpdateWrapper<HerculesTaskInfo> updateWrapper =
+                new LambdaUpdateWrapper<HerculesTaskInfo>()
+                        .in(HerculesTaskInfo::getId, correctTaskIds)
+                        .eq(HerculesTaskInfo::getStatus, TaskStatus.INIT.name())
+                        .eq(HerculesTaskInfo::getExecutorRegion, executorRegion)
+                        .eq(HerculesTaskInfo::isEnable, true)
+                        .isNull(HerculesTaskInfo::getOwnerId)
+                        .set(HerculesTaskInfo::getOwnerId, executorId)
+                        .set(HerculesTaskInfo::getStatus, TaskStatus.RUNNING.name());
         boolean updateSuccess = executorTasksService.update(updateWrapper);
-        if(!updateSuccess){
-            correctTaskIds.forEach(taskId -> {
-                lockResults.putIfAbsent(taskId,TaskInfoLockResult.NOT_CLAIMED);
-            });
-        }else{
-            List<HerculesTaskInfo> taskInfosAfterUpdate = Optional.ofNullable(executorTasksService.listByIds(correctTaskIds))
-                    .orElse(new ArrayList<>());
-            List<String> lockNotSuccessTaskIds = taskInfosAfterUpdate.stream().filter(x->!Objects.equals(x.getOwnerId(),executorId))
-                    .map(HerculesTaskInfo::getId).collect(Collectors.toList());
-            lockNotSuccessTaskIds.forEach(taskId -> {
-                lockResults.putIfAbsent(taskId,TaskInfoLockResult.NOT_CLAIMED);
-            });
+        if (!updateSuccess) {
+            correctTaskIds.forEach(
+                    taskId -> {
+                        lockResults.putIfAbsent(taskId, TaskInfoLockResult.NOT_CLAIMED);
+                    });
+        } else {
+            List<HerculesTaskInfo> taskInfosAfterUpdate =
+                    Optional.ofNullable(executorTasksService.listByIds(correctTaskIds))
+                            .orElse(new ArrayList<>());
+            List<String> lockNotSuccessTaskIds =
+                    taskInfosAfterUpdate.stream()
+                            .filter(x -> !Objects.equals(x.getOwnerId(), executorId))
+                            .map(HerculesTaskInfo::getId)
+                            .collect(Collectors.toList());
+            lockNotSuccessTaskIds.forEach(
+                    taskId -> {
+                        lockResults.putIfAbsent(taskId, TaskInfoLockResult.NOT_CLAIMED);
+                    });
             lockNotSuccessTaskIds.forEach(correctTaskIds::remove);
-            correctTaskIds.forEach(taskId -> {
-                lockResults.putIfAbsent(taskId,TaskInfoLockResult.SUCCESS);
-            });
+            correctTaskIds.forEach(
+                    taskId -> {
+                        lockResults.putIfAbsent(taskId, TaskInfoLockResult.SUCCESS);
+                    });
         }
         return lockResults;
     }
-
 }

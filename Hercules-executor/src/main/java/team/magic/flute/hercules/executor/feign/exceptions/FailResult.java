@@ -2,13 +2,12 @@ package team.magic.flute.hercules.executor.feign.exceptions;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class FailResult {
-    private int code ;
-    private String msg ;
-    private String remoteUrl ;
-    private boolean success ;
+    private int code;
+    private String msg;
+    private String remoteUrl;
+    private boolean success;
 
     public int getCode() {
         return code;

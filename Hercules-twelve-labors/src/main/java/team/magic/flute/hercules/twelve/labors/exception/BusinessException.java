@@ -1,6 +1,5 @@
 package team.magic.flute.hercules.twelve.labors.exception;
 
-
 import team.magic.flute.hercules.common.util.StrFormat;
 
 /**

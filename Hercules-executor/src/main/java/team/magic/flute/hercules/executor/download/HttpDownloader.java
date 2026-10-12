@@ -1,12 +1,11 @@
 package team.magic.flute.hercules.executor.download;
 
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-
 import java.io.*;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
@@ -21,10 +20,9 @@ public class HttpDownloader implements Downloader {
     public File downloadToLocal(URI srcURI, File dstDir, String filename) throws IOException {
         URL url = srcURI.toURL();
         File localFile = new File(dstDir, filename);
-        try (
-                InputStream inputStream = url.openStream();
-                BufferedOutputStream outputStream = new BufferedOutputStream(Files.newOutputStream(localFile.toPath()));
-        ) {
+        try (InputStream inputStream = url.openStream();
+                BufferedOutputStream outputStream =
+                        new BufferedOutputStream(Files.newOutputStream(localFile.toPath())); ) {
             byte[] buf = new byte[4096];
             int readBytes = -1;
             while ((readBytes = inputStream.read(buf)) >= 0) {

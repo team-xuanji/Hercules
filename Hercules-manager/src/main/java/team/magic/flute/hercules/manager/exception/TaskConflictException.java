@@ -4,7 +4,8 @@ public class TaskConflictException extends RuntimeException {
     public TaskConflictException(String message) {
         super(message);
     }
-    public TaskConflictException(String message,Exception e) {
-        super(message,e);
+
+    public TaskConflictException(String message, Exception e) {
+        super(message, e);
     }
 }

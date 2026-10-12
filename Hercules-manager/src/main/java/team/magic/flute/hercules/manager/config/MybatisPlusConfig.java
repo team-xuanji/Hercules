@@ -20,11 +20,11 @@ public class MybatisPlusConfig {
         MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
         interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.MYSQL));
         interceptor.addInnerInterceptor(new OptimisticLockerInnerInterceptor());
-        DynamicTableNameInnerInterceptor dynamicTableNameInnerInterceptor = new DynamicTableNameInnerInterceptor();
+        DynamicTableNameInnerInterceptor dynamicTableNameInnerInterceptor =
+                new DynamicTableNameInnerInterceptor();
         dynamicTableNameInnerInterceptor.setTableNameHandler(new RecoverTableNameHandle());
         interceptor.addInnerInterceptor(dynamicTableNameInnerInterceptor);
-//        interceptor.addInnerInterceptor(new LikeStringEscapeInterceptor());
+        //        interceptor.addInnerInterceptor(new LikeStringEscapeInterceptor());
         return interceptor;
     }
-
 }

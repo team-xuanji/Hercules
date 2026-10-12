@@ -1,6 +1,5 @@
 package team.magic.flute.hercules.manager.exception;
 
-
 import team.magic.flute.hercules.common.util.StrFormat;
 
 public class BusinessException extends RuntimeException {

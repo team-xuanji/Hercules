@@ -1,12 +1,11 @@
 package team.magic.flute.hercules.common.executor;
 
+import java.util.Collection;
 import lombok.Data;
 import lombok.experimental.Accessors;
 
-import java.util.Collection;
-
 @Data
-@Accessors(chain=true)
+@Accessors(chain = true)
 public class ExecutorProcessHandleWhiteList {
     private Collection<String> whiteList;
 }

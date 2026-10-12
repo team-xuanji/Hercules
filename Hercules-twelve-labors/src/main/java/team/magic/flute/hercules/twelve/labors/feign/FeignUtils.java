@@ -1,16 +1,16 @@
 package team.magic.flute.hercules.twelve.labors.feign;
 
-import team.magic.flute.hercules.twelve.labors.feign.bean.FeignConfigBean;
 import feign.Contract;
 import feign.Feign;
 import feign.Logger;
 import feign.Retryer;
+import team.magic.flute.hercules.twelve.labors.feign.bean.FeignConfigBean;
 
 /**
  * Feign Utilities for Business Access Gateway
  *
- * <p>Utility class for creating pre-configured Feign builders with standard
- * settings for HTTP clients within the Hercules business access gateway.
+ * <p>Utility class for creating pre-configured Feign builders with standard settings for HTTP
+ * clients within the Hercules business access gateway.
  *
  * @author Hercules Team
  * @version 1.0

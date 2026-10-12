@@ -1,10 +1,10 @@
 package team.magic.flute.hercules.common.util;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
 public final class HmacUtils {
 
@@ -13,7 +13,10 @@ public final class HmacUtils {
 
     private HmacUtils() {}
 
-    /** Compute HMAC-SHA256 and output lowercase hexadecimal. secret is the executor identity ID, and message is the canonicalized operation string. */
+    /**
+     * Compute HMAC-SHA256 and output lowercase hexadecimal. secret is the executor identity ID, and
+     * message is the canonicalized operation string.
+     */
     public static String hmacSha256Hex(String secret, String message) {
         try {
             Mac mac = Mac.getInstance(ALGORITHM);

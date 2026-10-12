@@ -3,6 +3,13 @@ package team.magic.flute.hercules.twelve.labors.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import jakarta.validation.Valid;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Objects;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.*;
 import team.magic.flute.hercules.common.http.BaseResponse;
 import team.magic.flute.hercules.twelve.labors.auth.UserAccessInfo;
 import team.magic.flute.hercules.twelve.labors.auth.UserLogInInfo;
@@ -11,67 +18,60 @@ import team.magic.flute.hercules.twelve.labors.dao.entity.CmsDataDownloadTaskDef
 import team.magic.flute.hercules.twelve.labors.dao.entity.CmsDataDownloadTaskPO;
 import team.magic.flute.hercules.twelve.labors.service.*;
 import team.magic.flute.hercules.twelve.labors.vo.*;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.util.StringUtils;
-import org.springframework.web.bind.annotation.*;
-import team.magic.flute.hercules.twelve.labors.service.*;
-import team.magic.flute.hercules.twelve.labors.vo.*;
-
-import javax.validation.Valid;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Objects;
 
 /**
  * CEM Data Download Service Controller - Business Access Gateway Interface
  *
  * <p>This REST controller serves as a critical component of the Hercules business access gateway,
- * providing comprehensive APIs for managing data download and export operations within the
- * Content Management System (CMS). As part of the business access gateway architecture, it
- * enables various business functions beyond just data export, serving as a primary interface
- * for business users and external systems to interact with the Hercules ecosystem.
+ * providing comprehensive APIs for managing data download and export operations within the Content
+ * Management System (CMS). As part of the business access gateway architecture, it enables various
+ * business functions beyond just data export, serving as a primary interface for business users and
+ * external systems to interact with the Hercules ecosystem.
  *
- * <p><strong>Business Access Gateway Role:</strong> This controller exemplifies the business
- * access gateway pattern by providing:
+ * <p><strong>Business Access Gateway Role:</strong> This controller exemplifies the business access
+ * gateway pattern by providing:
+ *
  * <ul>
- *   <li>Unified business operation interface for data export and management</li>
- *   <li>Extensible architecture supporting future business functions</li>
- *   <li>Standardized API patterns for consistent business integration</li>
- *   <li>Multi-tenant support with proper isolation and security</li>
+ *   <li>Unified business operation interface for data export and management
+ *   <li>Extensible architecture supporting future business functions
+ *   <li>Standardized API patterns for consistent business integration
+ *   <li>Multi-tenant support with proper isolation and security
  * </ul>
  *
  * <p><strong>Core Business Functions:</strong>
+ *
  * <ul>
- *   <li>Task definition management (CRUD operations)</li>
- *   <li>Export format configuration and validation</li>
- *   <li>Task submission and execution monitoring</li>
- *   <li>File download and access control</li>
- *   <li>Task status synchronization and cleanup</li>
- *   <li>User permission and authentication handling</li>
+ *   <li>Task definition management (CRUD operations)
+ *   <li>Export format configuration and validation
+ *   <li>Task submission and execution monitoring
+ *   <li>File download and access control
+ *   <li>Task status synchronization and cleanup
+ *   <li>User permission and authentication handling
  * </ul>
  *
  * <p><strong>Export Capabilities:</strong> The controller supports multiple export formats
- * including CSV, JSON, Parquet, and XLSX, with configurable compression options and
- * destination storage (OSS, S3). It integrates with the Hercules distributed task execution
- * system for scalable processing and provides real-time status updates and progress monitoring.
+ * including CSV, JSON, Parquet, and XLSX, with configurable compression options and destination
+ * storage (OSS, S3). It integrates with the Hercules distributed task execution system for scalable
+ * processing and provides real-time status updates and progress monitoring.
  *
  * <p><strong>Security and Access Control:</strong>
+ *
  * <ul>
- *   <li>User authentication and authorization</li>
- *   <li>App-key based access control</li>
- *   <li>Task ownership validation</li>
- *   <li>File access permission checks</li>
- *   <li>Multi-tenant data isolation</li>
+ *   <li>User authentication and authorization
+ *   <li>App-key based access control
+ *   <li>Task ownership validation
+ *   <li>File access permission checks
+ *   <li>Multi-tenant data isolation
  * </ul>
  *
- * <p><strong>Extensibility:</strong> As a business access gateway component, this controller
- * is designed to support future expansion beyond data export operations, including business
- * process automation, data transformation, integration workflows, and custom business logic
- * execution through the underlying Hercules framework.
+ * <p><strong>Extensibility:</strong> As a business access gateway component, this controller is
+ * designed to support future expansion beyond data export operations, including business process
+ * automation, data transformation, integration workflows, and custom business logic execution
+ * through the underlying Hercules framework.
  *
- * <p>All endpoints follow RESTful design principles and return standardized response
- * formats using {@link BaseResponse} wrapper for consistent error handling and data
- * structure across the business access gateway API.
+ * <p>All endpoints follow RESTful design principles and return standardized response formats using
+ * {@link BaseResponse} wrapper for consistent error handling and data structure across the business
+ * access gateway API.
  *
  * @author Hercules Team
  * @version 1.0
@@ -81,29 +81,21 @@ import java.util.Objects;
 @RequestMapping("/cem-download-service")
 public class CemDataDownloadServiceController {
 
-    @Autowired
-    private ExportFormatConfigService exportFormatConfigService;
+    @Autowired private ExportFormatConfigService exportFormatConfigService;
 
-    @Autowired
-    private CmsDataDownloadTaskDefService taskDefService;
+    @Autowired private CmsDataDownloadTaskDefService taskDefService;
 
-    @Autowired
-    private CmsDataDownloadTaskService taskService;
+    @Autowired private CmsDataDownloadTaskService taskService;
 
-    @Autowired
-    private CmsDataDownloadTaskQueryService taskQueryService;
+    @Autowired private CmsDataDownloadTaskQueryService taskQueryService;
 
-    @Autowired
-    private TaskSubmissionService taskSubmissionService;
+    @Autowired private TaskSubmissionService taskSubmissionService;
 
-    @Autowired
-    private TaskStatusSyncService taskStatusSyncService;
+    @Autowired private TaskStatusSyncService taskStatusSyncService;
 
-    @Autowired
-    private FileDownloadService fileDownloadService;
+    @Autowired private FileDownloadService fileDownloadService;
 
-    @Autowired
-    private TaskSubmissionAndDownloadService taskSubmissionAndDownloadService;
+    @Autowired private TaskSubmissionAndDownloadService taskSubmissionAndDownloadService;
 
     // ========== Permission Extraction Helper Methods ==========
 
@@ -115,11 +107,11 @@ public class CemDataDownloadServiceController {
      */
     private String[] extractAuthInfo(UserAccessInfo managerLoginInfo) {
         if (managerLoginInfo == null) {
-            return new String[]{null, null};
+            return new String[] {null, null};
         }
         String appKey = managerLoginInfo.getAppKey();
         String userId = String.valueOf(managerLoginInfo.getUserId());
-        return new String[]{appKey, userId};
+        return new String[] {appKey, userId};
     }
 
     /**
@@ -132,26 +124,30 @@ public class CemDataDownloadServiceController {
     public BaseResponse<List<DynamicEntity>> getExportFormatConfig(@PathVariable String format) {
         try {
             CmsDownloadFormat downloadFormat = CmsDownloadFormat.valueOf(format.toUpperCase());
-            List<DynamicEntity> configList = exportFormatConfigService.getFormatConfigFields(downloadFormat);
+            List<DynamicEntity> configList =
+                    exportFormatConfigService.getFormatConfigFields(downloadFormat);
             return BaseResponse.success(configList);
         } catch (IllegalArgumentException e) {
-            return BaseResponse.fail("Unsupported export format: " + format + ", supported formats: csv, json, parquet, xlsx");
+            return BaseResponse.fail(
+                    "Unsupported export format: "
+                            + format
+                            + ", supported formats: csv, json, parquet, xlsx");
         }
     }
 
     /**
      * Get all supported export formats and their configuration parameters
      *
-     * <p>This endpoint returns a comprehensive mapping of all supported export formats
-     * and their respective configuration parameters. Each format includes detailed
-     * parameter definitions that can be used to dynamically generate configuration
-     * forms in client applications.
+     * <p>This endpoint returns a comprehensive mapping of all supported export formats and their
+     * respective configuration parameters. Each format includes detailed parameter definitions that
+     * can be used to dynamically generate configuration forms in client applications.
      *
      * @return mapping of all format configuration parameters
      */
     @GetMapping("/export-format-config/all")
     public BaseResponse<java.util.Map<String, List<DynamicEntity>>> getAllExportFormatConfigs() {
-        java.util.Map<String, List<DynamicEntity>> allConfigs = exportFormatConfigService.getAllFormatConfigFields();
+        java.util.Map<String, List<DynamicEntity>> allConfigs =
+                exportFormatConfigService.getAllFormatConfigFields();
         return BaseResponse.success(allConfigs);
     }
 
@@ -164,12 +160,15 @@ public class CemDataDownloadServiceController {
      * @return creation result
      */
     @PostMapping("/task-def")
-    public BaseResponse<CmsDataDownloadTaskDefPO> createTaskDef(@Valid @RequestBody CmsDataDownloadTaskDefVO taskDefVO) {
+    public BaseResponse<CmsDataDownloadTaskDefPO> createTaskDef(
+            @Valid @RequestBody CmsDataDownloadTaskDefVO taskDefVO) {
         // Check if business key already exists
-//        CmsDataDownloadTaskDefPO existing = taskDefService.getById(taskDefVO.getBusinessKey());
-//        if (existing != null) {
-//            return BaseResponse.fail("Business scenario key already exists: " + taskDefVO.getBusinessKey());
-//        }
+        //        CmsDataDownloadTaskDefPO existing =
+        // taskDefService.getById(taskDefVO.getBusinessKey());
+        //        if (existing != null) {
+        //            return BaseResponse.fail("Business scenario key already exists: " +
+        // taskDefVO.getBusinessKey());
+        //        }
 
         // Convert VO to PO
         CmsDataDownloadTaskDefPO taskDefPO = taskDefVO.parse2Po();
@@ -204,17 +203,18 @@ public class CemDataDownloadServiceController {
     /**
      * Update task definition
      *
-     * <p>Updates an existing task definition with new configuration parameters.
-     * This endpoint allows modification of all task definition properties while
-     * preserving the original creation timestamp and business key.
+     * <p>Updates an existing task definition with new configuration parameters. This endpoint
+     * allows modification of all task definition properties while preserving the original creation
+     * timestamp and business key.
      *
      * @param businessKey business scenario key
-     * @param taskDefVO   task definition information
+     * @param taskDefVO task definition information
      * @return update result
      */
     @PutMapping("/task-def/{businessKey}")
-    public BaseResponse<CmsDataDownloadTaskDefPO> updateTaskDef(@PathVariable String businessKey,
-                                                                @Valid @RequestBody CmsDataDownloadTaskDefVO taskDefVO) {
+    public BaseResponse<CmsDataDownloadTaskDefPO> updateTaskDef(
+            @PathVariable String businessKey,
+            @Valid @RequestBody CmsDataDownloadTaskDefVO taskDefVO) {
         // Check if task definition exists
         CmsDataDownloadTaskDefPO existing = taskDefService.getById(businessKey);
         if (existing == null) {
@@ -223,7 +223,7 @@ public class CemDataDownloadServiceController {
 
         // Convert VO to PO
         CmsDataDownloadTaskDefPO taskDefPO = taskDefVO.parse2Po();
-//        BeanUtils.copyProperties(taskDefVO, taskDefPO);
+        //        BeanUtils.copyProperties(taskDefVO, taskDefPO);
         taskDefPO.setBusinessKey(businessKey); // Ensure primary key remains unchanged
         taskDefPO.setInsertTime(existing.getInsertTime()); // Preserve original insertion time
         taskDefPO.setUpdateTime(LocalDateTime.now());
@@ -240,9 +240,9 @@ public class CemDataDownloadServiceController {
     /**
      * Delete task definition
      *
-     * <p>Removes a task definition from the system. This operation will permanently
-     * delete the task definition and cannot be undone. Ensure that no active tasks
-     * are using this definition before deletion.
+     * <p>Removes a task definition from the system. This operation will permanently delete the task
+     * definition and cannot be undone. Ensure that no active tasks are using this definition before
+     * deletion.
      *
      * @param businessKey business scenario key
      * @return deletion result
@@ -267,11 +267,11 @@ public class CemDataDownloadServiceController {
     /**
      * Paginated query of task definition list
      *
-     * @param current         current page number, default 1
-     * @param size            page size, default 10
-     * @param businessKey     business scenario key (fuzzy query)
-     * @param businessDesc    business scenario description (fuzzy query)
-     * @param pluginGroup     plugin group (exact query)
+     * @param current current page number, default 1
+     * @param size page size, default 10
+     * @param businessKey business scenario key (fuzzy query)
+     * @param businessDesc business scenario description (fuzzy query)
+     * @param pluginGroup plugin group (exact query)
      * @param exportFormatType export format (exact query)
      * @return paginated result
      */
@@ -325,9 +325,9 @@ public class CemDataDownloadServiceController {
     /**
      * Batch delete task definitions
      *
-     * <p>Removes multiple task definitions from the system in a single operation.
-     * This is useful for cleanup operations or bulk management of task definitions.
-     * All specified definitions will be permanently deleted.
+     * <p>Removes multiple task definitions from the system in a single operation. This is useful
+     * for cleanup operations or bulk management of task definitions. All specified definitions will
+     * be permanently deleted.
      *
      * @param businessKeys list of business scenario keys
      * @return deletion result
@@ -349,15 +349,16 @@ public class CemDataDownloadServiceController {
     /**
      * Query task definitions by plugin group
      *
-     * <p>Retrieves all task definitions that belong to a specific plugin group.
-     * This is useful for organizing and managing related task definitions that
-     * share common execution logic or business domain.
+     * <p>Retrieves all task definitions that belong to a specific plugin group. This is useful for
+     * organizing and managing related task definitions that share common execution logic or
+     * business domain.
      *
      * @param pluginGroup plugin group identifier
      * @return list of task definitions
      */
     @GetMapping("/task-def/by-plugin-group/{pluginGroup}")
-    public BaseResponse<List<CmsDataDownloadTaskDefPO>> getTaskDefsByPluginGroup(@PathVariable String pluginGroup) {
+    public BaseResponse<List<CmsDataDownloadTaskDefPO>> getTaskDefsByPluginGroup(
+            @PathVariable String pluginGroup) {
         LambdaQueryWrapper<CmsDataDownloadTaskDefPO> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(CmsDataDownloadTaskDefPO::getPluginGroup, pluginGroup);
 
@@ -372,7 +373,8 @@ public class CemDataDownloadServiceController {
      * @return task definition list
      */
     @GetMapping("/task-def/by-export-format/{exportFormatType}")
-    public BaseResponse<List<CmsDataDownloadTaskDefPO>> getTaskDefsByExportFormat(@PathVariable String exportFormatType) {
+    public BaseResponse<List<CmsDataDownloadTaskDefPO>> getTaskDefsByExportFormat(
+            @PathVariable String exportFormatType) {
         LambdaQueryWrapper<CmsDataDownloadTaskDefPO> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(CmsDataDownloadTaskDefPO::getExportFormatType, exportFormatType);
 
@@ -385,18 +387,27 @@ public class CemDataDownloadServiceController {
     /**
      * Submit data download task (supports backend service calls)
      *
-     * @param request task submission request (can include appKey and userId for backend service calls)
+     * @param request task submission request (can include appKey and userId for backend service
+     *     calls)
      * @return task information
      */
     @PostMapping("/submit-task")
-    public BaseResponse<CmsDataDownloadTaskVO> submitTask(@Valid @RequestBody SubmitTaskRequestVO request) {
+    public BaseResponse<CmsDataDownloadTaskVO> submitTask(
+            @Valid @RequestBody SubmitTaskRequestVO request) {
         try {
-            // If the request contains appKey and userId, use these parameters (for backend service calls)
+            // If the request contains appKey and userId, use these parameters (for backend service
+            // calls)
             // If not included, pass null (original no permission control logic)
             String appKey = request.getAppKey();
             String userId = request.getUserId();
 
-            CmsDataDownloadTaskPO task = taskSubmissionService.submitTask(request, appKey, userId, request.getOperatorSource(), request.getUserName());
+            CmsDataDownloadTaskPO task =
+                    taskSubmissionService.submitTask(
+                            request,
+                            appKey,
+                            userId,
+                            request.getOperatorSource(),
+                            request.getUserName());
             return BaseResponse.success(new CmsDataDownloadTaskVO(task));
         } catch (Exception e) {
             return BaseResponse.fail("Task submission failed: " + e.getMessage());
@@ -406,10 +417,10 @@ public class CemDataDownloadServiceController {
     /**
      * Paginated query of task list
      *
-     * @param current      current page number, default 1
-     * @param size         page size, default 10
-     * @param businessKey  business scenario key (exact query)
-     * @param taskStatus   task status (exact query)
+     * @param current current page number, default 1
+     * @param size page size, default 10
+     * @param businessKey business scenario key (exact query)
+     * @param taskStatus task status (exact query)
      * @return paginated result
      */
     @GetMapping("/task")
@@ -443,9 +454,9 @@ public class CemDataDownloadServiceController {
     /**
      * Manually synchronize task status
      *
-     * <p>Forces a manual synchronization of task status with the Hercules execution
-     * framework. This is useful when automatic status updates are delayed or when
-     * immediate status verification is required.
+     * <p>Forces a manual synchronization of task status with the Hercules execution framework. This
+     * is useful when automatic status updates are delayed or when immediate status verification is
+     * required.
      *
      * @param taskId task ID
      * @return synchronization result
@@ -478,11 +489,15 @@ public class CemDataDownloadServiceController {
             List<CmsDataDownloadTaskPO> allTasks = taskService.list();
 
             // Group and count by status
-            java.util.Map<String, Long> statusCounts = allTasks.stream()
-                    .collect(java.util.stream.Collectors.groupingBy(
-                            task -> task.getTaskStatus() != null ? task.getTaskStatus() : "UNKNOWN",
-                            java.util.stream.Collectors.counting()
-                    ));
+            java.util.Map<String, Long> statusCounts =
+                    allTasks.stream()
+                            .collect(
+                                    java.util.stream.Collectors.groupingBy(
+                                            task ->
+                                                    task.getTaskStatus() != null
+                                                            ? task.getTaskStatus()
+                                                            : "UNKNOWN",
+                                            java.util.stream.Collectors.counting()));
 
             java.util.Map<String, Long> stats = new java.util.HashMap<>(statusCounts);
             stats.put("TOTAL", (long) allTasks.size());
@@ -496,8 +511,8 @@ public class CemDataDownloadServiceController {
     // ========== Abnormal Task Cleanup Functions ==========
 
     /**
-     * Manually clean up abnormal tasks
-     * Mark RUNNING/INIT status tasks older than 3 days as CANCELLED
+     * Manually clean up abnormal tasks Mark RUNNING/INIT status tasks older than 3 days as
+     * CANCELLED
      *
      * @return cleanup result
      */
@@ -519,9 +534,8 @@ public class CemDataDownloadServiceController {
     /**
      * Get abnormal task statistics
      *
-     * <p>Retrieves statistics for abnormal tasks that have been in RUNNING/INIT
-     * status for more than 3 days. This helps identify tasks that may be stuck
-     * or require manual intervention.
+     * <p>Retrieves statistics for abnormal tasks that have been in RUNNING/INIT status for more
+     * than 3 days. This helps identify tasks that may be stuck or require manual intervention.
      *
      * @return abnormal task statistics
      */
@@ -538,17 +552,20 @@ public class CemDataDownloadServiceController {
     // ========== Task Query Functions with Permission Control ==========
 
     /**
-     * Paginated query of task list (supports backend service calls and permission-free calls)
-     * Smart permission control: automatically selects query mode based on whether appKey and userId are provided
+     * Paginated query of task list (supports backend service calls and permission-free calls) Smart
+     * permission control: automatically selects query mode based on whether appKey and userId are
+     * provided
      *
      * @param queryVO query conditions (can include appKey and userId for backend service calls)
      * @return paginated result
      */
     @PostMapping("/public/task/query")
-    public BaseResponse<IPage<CmsDataDownloadTaskVO>> queryTasks(@RequestBody CmsDataDownloadTaskQueryVO queryVO) {
+    public BaseResponse<IPage<CmsDataDownloadTaskVO>> queryTasks(
+            @RequestBody CmsDataDownloadTaskQueryVO queryVO) {
         try {
             // Use unified query method, passing appKey and userId from queryVO
-            IPage<CmsDataDownloadTaskPO> result = taskQueryService.queryTasks(queryVO, queryVO.getAppKey(), queryVO.getUserId());
+            IPage<CmsDataDownloadTaskPO> result =
+                    taskQueryService.queryTasks(queryVO, queryVO.getAppKey(), queryVO.getUserId());
             return BaseResponse.success(result.convert(CmsDataDownloadTaskVO::new));
         } catch (Exception e) {
             return BaseResponse.fail("Failed to query task list: " + e.getMessage());
@@ -557,7 +574,8 @@ public class CemDataDownloadServiceController {
 
     /**
      * Query task information by task ID (supports backend service calls and no-permission calls)
-     * Smart permission control: automatically selects query mode based on whether appKey and userId are provided
+     * Smart permission control: automatically selects query mode based on whether appKey and userId
+     * are provided
      *
      * @param taskId task ID
      * @param appKey application key (optional, for backend service calls)
@@ -565,16 +583,18 @@ public class CemDataDownloadServiceController {
      * @return task information
      */
     @GetMapping("/public/task/{taskId}")
-    public BaseResponse<CmsDataDownloadTaskVO> getTaskById(@PathVariable Long taskId,
-                                                          @RequestParam(required = false) String appKey,
-                                                          @RequestParam(required = false) String userId) {
+    public BaseResponse<CmsDataDownloadTaskVO> getTaskById(
+            @PathVariable Long taskId,
+            @RequestParam(required = false) String appKey,
+            @RequestParam(required = false) String userId) {
         try {
             // Use unified query method with smart permission control
             CmsDataDownloadTaskPO task = taskQueryService.getTaskById(taskId, appKey, userId);
             if (task == null) {
-                String errorMsg = (StringUtils.hasText(appKey) && StringUtils.hasText(userId))
-                    ? "Task does not exist or no permission to access: " + taskId
-                    : "Task does not exist: " + taskId;
+                String errorMsg =
+                        (StringUtils.hasText(appKey) && StringUtils.hasText(userId))
+                                ? "Task does not exist or no permission to access: " + taskId
+                                : "Task does not exist: " + taskId;
                 return BaseResponse.fail(errorMsg);
             }
 
@@ -586,7 +606,8 @@ public class CemDataDownloadServiceController {
 
     /**
      * Query task list by business key (supports backend service calls and no-permission calls)
-     * Smart permission control: automatically selects query mode based on whether appKey and userId are provided
+     * Smart permission control: automatically selects query mode based on whether appKey and userId
+     * are provided
      *
      * @param businessKey business scenario key
      * @param appKey application key (optional, for backend service calls)
@@ -594,16 +615,19 @@ public class CemDataDownloadServiceController {
      * @return task list
      */
     @GetMapping("/public/task/business/{businessKey}")
-    public BaseResponse<List<CmsDataDownloadTaskVO>> getTasksByBusinessKey(@PathVariable String businessKey,
-                                                                          @RequestParam(required = false) String appKey,
-                                                                          @RequestParam(required = false) String userId) {
+    public BaseResponse<List<CmsDataDownloadTaskVO>> getTasksByBusinessKey(
+            @PathVariable String businessKey,
+            @RequestParam(required = false) String appKey,
+            @RequestParam(required = false) String userId) {
         try {
             // Use unified query method with smart permission control
-            List<CmsDataDownloadTaskPO> tasks = taskQueryService.getTasksByBusinessKey(businessKey, appKey, userId);
+            List<CmsDataDownloadTaskPO> tasks =
+                    taskQueryService.getTasksByBusinessKey(businessKey, appKey, userId);
 
-            List<CmsDataDownloadTaskVO> taskVOs = tasks.stream()
-                    .map(CmsDataDownloadTaskVO::new)
-                    .collect(java.util.stream.Collectors.toList());
+            List<CmsDataDownloadTaskVO> taskVOs =
+                    tasks.stream()
+                            .map(CmsDataDownloadTaskVO::new)
+                            .collect(java.util.stream.Collectors.toList());
             return BaseResponse.success(taskVOs);
         } catch (Exception e) {
             return BaseResponse.fail("Failed to query task list: " + e.getMessage());
@@ -613,21 +637,25 @@ public class CemDataDownloadServiceController {
     /**
      * Get user task status statistics (with permission control)
      *
-     * <p>Retrieves task status statistics for the authenticated user, providing
-     * insights into task distribution across different status categories.
-     * This helps users understand their task execution patterns and identify
-     * potential issues.
+     * <p>Retrieves task status statistics for the authenticated user, providing insights into task
+     * distribution across different status categories. This helps users understand their task
+     * execution patterns and identify potential issues.
      *
      * @param managerLoginInfo manager login information
      * @return status statistics information
      */
     @GetMapping("/task/user-status-stats")
-    public BaseResponse<java.util.Map<String, Long>> getUserTaskStatusStats(@UserLogInInfo UserAccessInfo managerLoginInfo) {
+    public BaseResponse<java.util.Map<String, Long>> getUserTaskStatusStats(
+            @UserLogInInfo UserAccessInfo managerLoginInfo) {
         try {
-            java.util.Map<String, Long> stats = taskQueryService.getTaskStatusStats(managerLoginInfo.getAppKey(), Objects.toString(managerLoginInfo.getUserId()));
+            java.util.Map<String, Long> stats =
+                    taskQueryService.getTaskStatusStats(
+                            managerLoginInfo.getAppKey(),
+                            Objects.toString(managerLoginInfo.getUserId()));
             return BaseResponse.success(stats);
         } catch (Exception e) {
-            return BaseResponse.fail("Failed to get user task status statistics: " + e.getMessage());
+            return BaseResponse.fail(
+                    "Failed to get user task status statistics: " + e.getMessage());
         }
     }
 
@@ -636,17 +664,18 @@ public class CemDataDownloadServiceController {
     /**
      * Batch get file download URLs (with permission control)
      *
-     * <p>Retrieves download URLs for multiple tasks in a single request.
-     * This endpoint is optimized for bulk operations and includes permission
-     * validation to ensure users can only access their own task files.
+     * <p>Retrieves download URLs for multiple tasks in a single request. This endpoint is optimized
+     * for bulk operations and includes permission validation to ensure users can only access their
+     * own task files.
      *
      * @param taskIds list of task IDs
      * @param managerLoginInfo manager login information
      * @return mapping of task ID to download URL
      */
     @PostMapping("/task/batch-download-urls")
-    public BaseResponse<java.util.Map<String, Object>> batchGetFileDownloadUrls(@RequestBody java.util.List<Long> taskIds,
-                                                                                @UserLogInInfo UserAccessInfo managerLoginInfo) {
+    public BaseResponse<java.util.Map<String, Object>> batchGetFileDownloadUrls(
+            @RequestBody java.util.List<Long> taskIds,
+            @UserLogInInfo UserAccessInfo managerLoginInfo) {
         try {
             if (taskIds == null || taskIds.isEmpty()) {
                 return BaseResponse.fail("Task ID list cannot be empty");
@@ -656,12 +685,18 @@ public class CemDataDownloadServiceController {
                 return BaseResponse.fail("Batch download URL count cannot exceed 100");
             }
 
-            java.util.Map<Long, String> downloadUrls = fileDownloadService.batchGetFileDownloadUrls(taskIds, managerLoginInfo.getAppKey(),Objects.toString(managerLoginInfo.getUserId()));
+            java.util.Map<Long, String> downloadUrls =
+                    fileDownloadService.batchGetFileDownloadUrls(
+                            taskIds,
+                            managerLoginInfo.getAppKey(),
+                            Objects.toString(managerLoginInfo.getUserId()));
 
             java.util.Map<String, Object> result = new java.util.HashMap<>();
             result.put("downloadUrls", downloadUrls);
             result.put("totalCount", taskIds.size());
-            result.put("successCount", downloadUrls.values().stream().mapToInt(url -> url != null ? 1 : 0).sum());
+            result.put(
+                    "successCount",
+                    downloadUrls.values().stream().mapToInt(url -> url != null ? 1 : 0).sum());
             result.put("expirationTime", "1 hour");
             result.put("generateTime", java.time.LocalDateTime.now());
 
@@ -679,10 +714,14 @@ public class CemDataDownloadServiceController {
      * @return whether file exists
      */
     @GetMapping("/task/{taskId}/file-exists")
-    public BaseResponse<java.util.Map<String, Object>> checkFileExists(@PathVariable Long taskId,
-                                                                       @UserLogInInfo UserAccessInfo managerLoginInfo) {
+    public BaseResponse<java.util.Map<String, Object>> checkFileExists(
+            @PathVariable Long taskId, @UserLogInInfo UserAccessInfo managerLoginInfo) {
         try {
-            boolean exists = fileDownloadService.checkFileExists(taskId, managerLoginInfo.getAppKey(),Objects.toString(managerLoginInfo.getUserId()));
+            boolean exists =
+                    fileDownloadService.checkFileExists(
+                            taskId,
+                            managerLoginInfo.getAppKey(),
+                            Objects.toString(managerLoginInfo.getUserId()));
 
             java.util.Map<String, Object> result = new java.util.HashMap<>();
             result.put("taskId", taskId);
@@ -698,8 +737,8 @@ public class CemDataDownloadServiceController {
     // ========== No-Authentication File Download Functions ==========
 
     /**
-     * Get file download URL (smart permission control)
-     * Supports passing appKey and userId through request parameters for permission control
+     * Get file download URL (smart permission control) Supports passing appKey and userId through
+     * request parameters for permission control
      *
      * @param taskId task ID
      * @param appKey application key (optional, for permission control)
@@ -707,9 +746,10 @@ public class CemDataDownloadServiceController {
      * @return file download URL
      */
     @GetMapping("/public/task/{taskId}/download-url")
-    public BaseResponse<java.util.Map<String, Object>> getFileDownloadUrlWithoutAuth(@PathVariable Long taskId,
-                                                                                     @RequestParam(required = false) String appKey,
-                                                                                     @RequestParam(required = false) String userId) {
+    public BaseResponse<java.util.Map<String, Object>> getFileDownloadUrlWithoutAuth(
+            @PathVariable Long taskId,
+            @RequestParam(required = false) String appKey,
+            @RequestParam(required = false) String userId) {
         try {
             String downloadUrl = fileDownloadService.getFileDownloadUrl(taskId, appKey, userId);
             boolean authRequired = StringUtils.hasText(appKey) && StringUtils.hasText(userId);
@@ -730,15 +770,16 @@ public class CemDataDownloadServiceController {
     /**
      * Batch get file download URLs (no authentication)
      *
-     * <p>Retrieves download URLs for multiple tasks without authentication.
-     * This endpoint is designed for internal service-to-service communication
-     * and public access scenarios where authentication is not required.
+     * <p>Retrieves download URLs for multiple tasks without authentication. This endpoint is
+     * designed for internal service-to-service communication and public access scenarios where
+     * authentication is not required.
      *
      * @param taskIds list of task IDs
      * @return mapping of task ID to download URL
      */
     @PostMapping("/public/task/batch-download-urls")
-    public BaseResponse<java.util.Map<String, Object>> batchGetFileDownloadUrlsWithoutAuth(@RequestBody java.util.List<Long> taskIds) {
+    public BaseResponse<java.util.Map<String, Object>> batchGetFileDownloadUrlsWithoutAuth(
+            @RequestBody java.util.List<Long> taskIds) {
         try {
             if (taskIds == null || taskIds.isEmpty()) {
                 return BaseResponse.fail("Task ID list cannot be empty");
@@ -748,12 +789,15 @@ public class CemDataDownloadServiceController {
                 return BaseResponse.fail("Batch download URL count cannot exceed 100");
             }
 
-            java.util.Map<Long, String> downloadUrls = fileDownloadService.batchGetFileDownloadUrls(taskIds,null,null);
+            java.util.Map<Long, String> downloadUrls =
+                    fileDownloadService.batchGetFileDownloadUrls(taskIds, null, null);
 
             java.util.Map<String, Object> result = new java.util.HashMap<>();
             result.put("downloadUrls", downloadUrls);
             result.put("totalCount", taskIds.size());
-            result.put("successCount", downloadUrls.values().stream().mapToInt(url -> url != null ? 1 : 0).sum());
+            result.put(
+                    "successCount",
+                    downloadUrls.values().stream().mapToInt(url -> url != null ? 1 : 0).sum());
             result.put("expirationTime", "1 hour");
             result.put("generateTime", java.time.LocalDateTime.now());
             result.put("authRequired", false);
@@ -771,9 +815,10 @@ public class CemDataDownloadServiceController {
      * @return whether file exists
      */
     @GetMapping("/public/task/{taskId}/file-exists")
-    public BaseResponse<java.util.Map<String, Object>> checkFileExistsWithoutAuth(@PathVariable Long taskId) {
+    public BaseResponse<java.util.Map<String, Object>> checkFileExistsWithoutAuth(
+            @PathVariable Long taskId) {
         try {
-            boolean exists = fileDownloadService.checkFileExists(taskId,null,null);
+            boolean exists = fileDownloadService.checkFileExists(taskId, null, null);
 
             java.util.Map<String, Object> result = new java.util.HashMap<>();
             result.put("taskId", taskId);
@@ -794,9 +839,12 @@ public class CemDataDownloadServiceController {
      * @return file download URL
      */
     @GetMapping("/public/business/{businessKey}/latest-download-url")
-    public BaseResponse<java.util.Map<String, Object>> getLatestFileDownloadUrlByBusinessKey(@PathVariable String businessKey) {
+    public BaseResponse<java.util.Map<String, Object>> getLatestFileDownloadUrlByBusinessKey(
+            @PathVariable String businessKey) {
         try {
-            String downloadUrl = fileDownloadService.getLatestFileDownloadUrlByBusinessKey(businessKey,null,null);
+            String downloadUrl =
+                    fileDownloadService.getLatestFileDownloadUrlByBusinessKey(
+                            businessKey, null, null);
 
             java.util.Map<String, Object> result = new java.util.HashMap<>();
             result.put("businessKey", businessKey);
@@ -810,8 +858,6 @@ public class CemDataDownloadServiceController {
             return BaseResponse.fail("Failed to get latest file download URL: " + e.getMessage());
         }
     }
-
-
 
     // ========== Integrated Task Submission and Download URL Retrieval Functions ==========
 
@@ -828,15 +874,21 @@ public class CemDataDownloadServiceController {
             @UserLogInInfo UserAccessInfo managerLoginInfo) {
         try {
             request.setUserName(managerLoginInfo.getUser());
-            TaskSubmissionAndDownloadResultVO result = taskSubmissionAndDownloadService.submitTaskAndGetDownloadUrl(request, managerLoginInfo.getAppKey(),Objects.toString(managerLoginInfo.getUserId()));
+            TaskSubmissionAndDownloadResultVO result =
+                    taskSubmissionAndDownloadService.submitTaskAndGetDownloadUrl(
+                            request,
+                            managerLoginInfo.getAppKey(),
+                            Objects.toString(managerLoginInfo.getUserId()));
             return BaseResponse.success(result);
         } catch (Exception e) {
-            return BaseResponse.fail("Failed to submit task and get download URL: " + e.getMessage());
+            return BaseResponse.fail(
+                    "Failed to submit task and get download URL: " + e.getMessage());
         }
     }
 
     /**
-     * Submit task and wait for completion, then get download URL (with permission verification, custom wait time)
+     * Submit task and wait for completion, then get download URL (with permission verification,
+     * custom wait time)
      *
      * @param request task submission request
      * @param managerLoginInfo manager login information
@@ -860,54 +912,63 @@ public class CemDataDownloadServiceController {
             }
 
             request.setUserName(managerLoginInfo.getUser());
-            TaskSubmissionAndDownloadResultVO result = taskSubmissionAndDownloadService.submitTaskAndGetDownloadUrl(
-                    request,
-                    managerLoginInfo.getAppKey(),
-                    Objects.toString(managerLoginInfo.getUserId()),
-                    Objects.toString(managerLoginInfo.getUser()),
-                    maxWaitSeconds,
-                    pollIntervalSeconds);
+            TaskSubmissionAndDownloadResultVO result =
+                    taskSubmissionAndDownloadService.submitTaskAndGetDownloadUrl(
+                            request,
+                            managerLoginInfo.getAppKey(),
+                            Objects.toString(managerLoginInfo.getUserId()),
+                            Objects.toString(managerLoginInfo.getUser()),
+                            maxWaitSeconds,
+                            pollIntervalSeconds);
             return BaseResponse.success(result);
         } catch (Exception e) {
-            return BaseResponse.fail("Failed to submit task and get download URL: " + e.getMessage());
+            return BaseResponse.fail(
+                    "Failed to submit task and get download URL: " + e.getMessage());
         }
     }
 
     /**
-     * Submit task and wait for completion, then get download URL (no permission verification, supports backend service calls)
+     * Submit task and wait for completion, then get download URL (no permission verification,
+     * supports backend service calls)
      *
-     * <p>This endpoint allows backend services to submit tasks and retrieve download URLs
-     * without user authentication. It supports service-to-service communication and
-     * automated workflows that don't require user context.
+     * <p>This endpoint allows backend services to submit tasks and retrieve download URLs without
+     * user authentication. It supports service-to-service communication and automated workflows
+     * that don't require user context.
      *
-     * @param request task submission request (can include appKey and userId for backend service calls)
+     * @param request task submission request (can include appKey and userId for backend service
+     *     calls)
      * @return complete information including download URL
      */
     @PostMapping("/public/submit-and-download")
     public BaseResponse<TaskSubmissionAndDownloadResultVO> submitTaskAndGetDownloadUrlWithoutAuth(
             @Valid @RequestBody SubmitTaskRequestVO request) {
         try {
-            TaskSubmissionAndDownloadResultVO result = taskSubmissionAndDownloadService.
-                    submitTaskAndGetDownloadUrl(request,null,null);
+            TaskSubmissionAndDownloadResultVO result =
+                    taskSubmissionAndDownloadService.submitTaskAndGetDownloadUrl(
+                            request, null, null);
             return BaseResponse.success(result);
         } catch (Exception e) {
-            return BaseResponse.fail("Failed to submit task and get download URL: " + e.getMessage());
+            return BaseResponse.fail(
+                    "Failed to submit task and get download URL: " + e.getMessage());
         }
     }
 
     /**
-     * Submit task and wait for completion, then get download URL (no permission verification, custom wait time, supports backend service calls)
+     * Submit task and wait for completion, then get download URL (no permission verification,
+     * custom wait time, supports backend service calls)
      *
-     * @param request task submission request (can include appKey and userId for backend service calls)
+     * @param request task submission request (can include appKey and userId for backend service
+     *     calls)
      * @param maxWaitSeconds maximum wait time (seconds), default 300 seconds
      * @param pollIntervalSeconds polling interval (seconds), default 5 seconds
      * @return complete information including download URL
      */
     @PostMapping("/public/submit-and-download-with-timeout")
-    public BaseResponse<TaskSubmissionAndDownloadResultVO> submitTaskAndGetDownloadUrlWithoutAuthAndTimeout(
-            @Valid @RequestBody SubmitTaskRequestVO request,
-            @RequestParam(defaultValue = "300") int maxWaitSeconds,
-            @RequestParam(defaultValue = "5") int pollIntervalSeconds) {
+    public BaseResponse<TaskSubmissionAndDownloadResultVO>
+            submitTaskAndGetDownloadUrlWithoutAuthAndTimeout(
+                    @Valid @RequestBody SubmitTaskRequestVO request,
+                    @RequestParam(defaultValue = "300") int maxWaitSeconds,
+                    @RequestParam(defaultValue = "5") int pollIntervalSeconds) {
         try {
             // Parameter validation
             if (maxWaitSeconds <= 0 || maxWaitSeconds > 1800) { // Maximum 30 minutes
@@ -917,20 +978,22 @@ public class CemDataDownloadServiceController {
                 return BaseResponse.fail("Polling interval must be between 1-60 seconds");
             }
 
-            TaskSubmissionAndDownloadResultVO result = taskSubmissionAndDownloadService.submitTaskAndGetDownloadUrl(
-                    request,null,null,null, maxWaitSeconds, pollIntervalSeconds);
+            TaskSubmissionAndDownloadResultVO result =
+                    taskSubmissionAndDownloadService.submitTaskAndGetDownloadUrl(
+                            request, null, null, null, maxWaitSeconds, pollIntervalSeconds);
             return BaseResponse.success(result);
         } catch (Exception e) {
-            return BaseResponse.fail("Failed to submit task and get download URL: " + e.getMessage());
+            return BaseResponse.fail(
+                    "Failed to submit task and get download URL: " + e.getMessage());
         }
     }
 
     /**
      * Get current task status (for client-side active querying)
      *
-     * <p>Retrieves the current status of a specific task. This endpoint is designed
-     * for client applications that need to actively poll task status for real-time
-     * updates and progress monitoring.
+     * <p>Retrieves the current status of a specific task. This endpoint is designed for client
+     * applications that need to actively poll task status for real-time updates and progress
+     * monitoring.
      *
      * @param taskId task ID
      * @return task status information

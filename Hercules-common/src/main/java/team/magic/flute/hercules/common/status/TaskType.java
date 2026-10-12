@@ -5,9 +5,7 @@ public enum TaskType {
     ONCE,
     ASYNC_RECOVER,
     FORWARD,
-    /**
-     * Maybe not useful
-     */
+    /** Maybe not useful */
     @Deprecated
     ALIVE
 }

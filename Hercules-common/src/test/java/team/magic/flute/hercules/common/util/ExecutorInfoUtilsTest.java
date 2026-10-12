@@ -1,7 +1,9 @@
 package team.magic.flute.hercules.common.util;
 
-import org.junit.jupiter.api.Test;
-import team.magic.flute.hercules.common.global.ExecutorTaskOps;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -11,17 +13,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
+import team.magic.flute.hercules.common.global.ExecutorTaskOps;
 
 /**
- * Offline unit tests for the header-based signing protocol utilities
- * (ADR-0016). No Spring, no DB — pins the 5-field canonical message format,
- * query canonicalization, sign/verify roundtrip, single-char tamper detection
- * and the timestamp freshness window boundaries.
+ * Offline unit tests for the header-based signing protocol utilities (ADR-0016). No Spring, no DB —
+ * pins the 5-field canonical message format, query canonicalization, sign/verify roundtrip,
+ * single-char tamper detection and the timestamp freshness window boundaries.
  */
 class ExecutorInfoUtilsTest {
 
@@ -29,17 +27,18 @@ class ExecutorInfoUtilsTest {
 
     @Test
     void buildCanonicalMessageExactString() {
-        String msg = ExecutorInfoUtils.buildCanonicalMessage(
-                "FETCH", "exec-1", "1700000000000",
-                "executorId=exec-1&fetchLimit=10", "");
+        String msg =
+                ExecutorInfoUtils.buildCanonicalMessage(
+                        "FETCH", "exec-1", "1700000000000", "executorId=exec-1&fetchLimit=10", "");
         String expected = "FETCH\nexec-1\n1700000000000\nexecutorId=exec-1&fetchLimit=10\n";
         assertEquals(expected, msg);
     }
 
     @Test
     void buildCanonicalMessageWithBodySha() {
-        String msg = ExecutorInfoUtils.buildCanonicalMessage(
-                "FINISH", "task-9", "1700000000001", "", "abc123");
+        String msg =
+                ExecutorInfoUtils.buildCanonicalMessage(
+                        "FINISH", "task-9", "1700000000001", "", "abc123");
         assertEquals("FINISH\ntask-9\n1700000000001\n\nabc123", msg);
     }
 
@@ -79,52 +78,52 @@ class ExecutorInfoUtilsTest {
     @Test
     void signAndVerifyRoundtrip() {
         String ts = String.valueOf(System.currentTimeMillis());
-        String sig = ExecutorInfoUtils.signRequest(
-                IDENTITY, "FETCH", "exec-1", ts,
-                "executorId=exec-1&fetchLimit=10", "");
-        assertTrue(ExecutorInfoUtils.verifyRequest(
-                IDENTITY, "FETCH", "exec-1", ts,
-                "executorId=exec-1&fetchLimit=10", "", sig));
+        String sig =
+                ExecutorInfoUtils.signRequest(
+                        IDENTITY, "FETCH", "exec-1", ts, "executorId=exec-1&fetchLimit=10", "");
+        assertTrue(
+                ExecutorInfoUtils.verifyRequest(
+                        IDENTITY,
+                        "FETCH",
+                        "exec-1",
+                        ts,
+                        "executorId=exec-1&fetchLimit=10",
+                        "",
+                        sig));
     }
 
     @Test
     void oneCharChangeFailsVerification() {
         String ts = String.valueOf(System.currentTimeMillis());
-        String sig = ExecutorInfoUtils.signRequest(
-                IDENTITY, "FETCH", "exec-1", ts, "", "");
+        String sig = ExecutorInfoUtils.signRequest(IDENTITY, "FETCH", "exec-1", ts, "", "");
         // tamper subject
-        assertFalse(ExecutorInfoUtils.verifyRequest(
-                IDENTITY, "FETCH", "exec-2", ts, "", "", sig));
+        assertFalse(ExecutorInfoUtils.verifyRequest(IDENTITY, "FETCH", "exec-2", ts, "", "", sig));
         // tamper op
-        assertFalse(ExecutorInfoUtils.verifyRequest(
-                IDENTITY, "LOCK", "exec-1", ts, "", "", sig));
+        assertFalse(ExecutorInfoUtils.verifyRequest(IDENTITY, "LOCK", "exec-1", ts, "", "", sig));
         // tamper query
-        assertFalse(ExecutorInfoUtils.verifyRequest(
-                IDENTITY, "FETCH", "exec-1", ts, "x=1", "", sig));
+        assertFalse(
+                ExecutorInfoUtils.verifyRequest(IDENTITY, "FETCH", "exec-1", ts, "x=1", "", sig));
         // tamper bodySha
-        assertFalse(ExecutorInfoUtils.verifyRequest(
-                IDENTITY, "FETCH", "exec-1", ts, "", "deadbeef", sig));
+        assertFalse(
+                ExecutorInfoUtils.verifyRequest(
+                        IDENTITY, "FETCH", "exec-1", ts, "", "deadbeef", sig));
         // tamper identity (key)
-        assertFalse(ExecutorInfoUtils.verifyRequest(
-                "WRONG_KEY", "FETCH", "exec-1", ts, "", "", sig));
+        assertFalse(
+                ExecutorInfoUtils.verifyRequest("WRONG_KEY", "FETCH", "exec-1", ts, "", "", sig));
     }
 
     @Test
     void verifyRejectsNullBlankSignature() {
         String ts = String.valueOf(System.currentTimeMillis());
-        assertFalse(ExecutorInfoUtils.verifyRequest(
-                IDENTITY, "FETCH", "exec-1", ts, "", "", null));
-        assertFalse(ExecutorInfoUtils.verifyRequest(
-                IDENTITY, "FETCH", "exec-1", ts, "", "", ""));
+        assertFalse(ExecutorInfoUtils.verifyRequest(IDENTITY, "FETCH", "exec-1", ts, "", "", null));
+        assertFalse(ExecutorInfoUtils.verifyRequest(IDENTITY, "FETCH", "exec-1", ts, "", "", ""));
     }
 
     @Test
     void signRequestDifferentInputsProduceDifferentSignatures() {
         String ts = String.valueOf(System.currentTimeMillis());
-        String s1 = ExecutorInfoUtils.signRequest(
-                IDENTITY, "FETCH", "exec-1", ts, "", "");
-        String s2 = ExecutorInfoUtils.signRequest(
-                IDENTITY, "FETCH", "exec-1", ts, "x=1", "");
+        String s1 = ExecutorInfoUtils.signRequest(IDENTITY, "FETCH", "exec-1", ts, "", "");
+        String s2 = ExecutorInfoUtils.signRequest(IDENTITY, "FETCH", "exec-1", ts, "x=1", "");
         assertNotEquals(s1, s2);
     }
 
@@ -194,9 +193,11 @@ class ExecutorInfoUtilsTest {
     @Test
     void sha256HexKnownVector() {
         // SHA-256("") = e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-        assertEquals("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        assertEquals(
+                "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
                 ExecutorInfoUtils.sha256Hex(new byte[0]));
-        assertEquals("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        assertEquals(
+                "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
                 ExecutorInfoUtils.sha256Hex(null));
     }
 
@@ -204,8 +205,8 @@ class ExecutorInfoUtilsTest {
     void canonicalQueryHandlesStringArrayInput() {
         // Server side: HttpServletRequest.getParameterMap() returns Map<String,String[]>
         Map<String, String[]> arrMap = new TreeMap<>();
-        arrMap.put("b", new String[]{"2"});
-        arrMap.put("a", new String[]{"1", "0"});
+        arrMap.put("b", new String[] {"2"});
+        arrMap.put("a", new String[] {"1", "0"});
         assertEquals("a=0&a=1&b=2", ExecutorInfoUtils.canonicalQuery(arrMap));
     }
 

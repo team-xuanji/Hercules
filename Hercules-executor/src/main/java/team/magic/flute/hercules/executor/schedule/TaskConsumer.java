@@ -1,5 +1,15 @@
 package team.magic.flute.hercules.executor.schedule;
 
+import static team.magic.flute.hercules.common.global.Constant.BATCH_FETCH_MAX_SIZE;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -19,35 +29,24 @@ import team.magic.flute.hercules.executor.config.RunnerEnv;
 import team.magic.flute.hercules.executor.service.ExecutorProcessHandle;
 import team.magic.flute.hercules.executor.vo.ExecutorInfoReportRequestVO;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collectors;
-
-import static team.magic.flute.hercules.common.global.Constant.BATCH_FETCH_MAX_SIZE;
-
 /**
  * Task Consumer
  *
- * <p>This component is responsible for consuming and processing tasks from the task queue.
- * It runs as a scheduled service that periodically polls for available tasks and dispatches
- * them to the execution engine.
+ * <p>This component is responsible for consuming and processing tasks from the task queue. It runs
+ * as a scheduled service that periodically polls for available tasks and dispatches them to the
+ * execution engine.
  *
  * <p>Key responsibilities include:
+ *
  * <ul>
- *   <li>Polling for available tasks based on business key and executor capacity</li>
- *   <li>Managing task execution lifecycle and status updates</li>
- *   <li>Coordinating with the ExecutorProcessHandle for task processing</li>
- *   <li>Handling task failures and cleanup operations</li>
+ *   <li>Polling for available tasks based on business key and executor capacity
+ *   <li>Managing task execution lifecycle and status updates
+ *   <li>Coordinating with the ExecutorProcessHandle for task processing
+ *   <li>Handling task failures and cleanup operations
  * </ul>
  *
- * <p>The consumer operates with a configurable execution interval and uses locking
- * to ensure thread-safe operation in multi-instance deployments.
+ * <p>The consumer operates with a configurable execution interval and uses locking to ensure
+ * thread-safe operation in multi-instance deployments.
  *
  * @author Hercules Team
  * @version 1.0
@@ -58,49 +57,51 @@ import static team.magic.flute.hercules.common.global.Constant.BATCH_FETCH_MAX_S
 @EnableAsync
 public class TaskConsumer {
 
-    @Autowired
-    private RunnerEnv runnerEnv;
-    @Autowired
-    private HerculesManagerApi managerApi;
-    @Autowired
-    private ExecutorProcessHandle executorProcessHandle;
+    @Autowired private RunnerEnv runnerEnv;
+    @Autowired private HerculesManagerApi managerApi;
+    @Autowired private ExecutorProcessHandle executorProcessHandle;
     private final Lock taskScheduleLock = new ReentrantLock();
     private final Lock reportLock = new ReentrantLock();
     private volatile boolean reportSuccess = false;
     private volatile long watermark = System.currentTimeMillis();
 
-
     @Async
     @SneakyThrows(Exception.class)
-    @Scheduled(fixedRate = 10000,initialDelay = 1000)
-    public void reportInfo(){
-        if(reportLock.tryLock()){
-            try{
-                HerculesExecutorHeartbeatInfo requestVO = new HerculesExecutorHeartbeatInfo()
-                        .setExecutorId(runnerEnv.getRunnerInstanceId())
-                        .setExecutorIdentityId(runnerEnv.getRunnerIdentityId())
-                        .setExecutorRegion(runnerEnv.getExecutorRegion())
-                        .setExecutorRegionDesc(runnerEnv.getExecutorRegionDesc())
-                        .setExecutorMaxSlot(runnerEnv.getTotalSlot())
-                        .setExecutorAvailableSlot((int) executorProcessHandle.aliveAbleSlot())
-                        .setExecutorLoadPluginInfo(new ExecutorCurrentLoadPluginInfo()
-                                .setPluginMap(executorProcessHandle.showCurrentLoadPlugin())
-                        )
-                        .setEnableDuckdb(runnerEnv.isEnableDuckdb())
-                        .setExecutorPluginHandleWhiteList(runnerEnv.getPluginWhiteList());
-                log.debug("Start reporting executor info.info: {}", JacksonUtils.writeValueAsString(requestVO));
+    @Scheduled(fixedRate = 10000, initialDelay = 1000)
+    public void reportInfo() {
+        if (reportLock.tryLock()) {
+            try {
+                HerculesExecutorHeartbeatInfo requestVO =
+                        new HerculesExecutorHeartbeatInfo()
+                                .setExecutorId(runnerEnv.getRunnerInstanceId())
+                                .setExecutorIdentityId(runnerEnv.getRunnerIdentityId())
+                                .setExecutorRegion(runnerEnv.getExecutorRegion())
+                                .setExecutorRegionDesc(runnerEnv.getExecutorRegionDesc())
+                                .setExecutorMaxSlot(runnerEnv.getTotalSlot())
+                                .setExecutorAvailableSlot(
+                                        (int) executorProcessHandle.aliveAbleSlot())
+                                .setExecutorLoadPluginInfo(
+                                        new ExecutorCurrentLoadPluginInfo()
+                                                .setPluginMap(
+                                                        executorProcessHandle
+                                                                .showCurrentLoadPlugin()))
+                                .setEnableDuckdb(runnerEnv.isEnableDuckdb())
+                                .setExecutorPluginHandleWhiteList(runnerEnv.getPluginWhiteList());
+                log.debug(
+                        "Start reporting executor info.info: {}",
+                        JacksonUtils.writeValueAsString(requestVO));
                 ExecutorInfoReportRequestVO reportRequestVO = new ExecutorInfoReportRequestVO();
-                reportRequestVO.fillRequestVO(requestVO,runnerEnv.getHttpEncryptKey());
-                BaseResponse<Boolean>  result = managerApi.reportExecutorInfo(reportRequestVO);
-                if(Boolean.TRUE.equals(result.getData()) && !reportSuccess){
+                reportRequestVO.fillRequestVO(requestVO, runnerEnv.getHttpEncryptKey());
+                BaseResponse<Boolean> result = managerApi.reportExecutorInfo(reportRequestVO);
+                if (Boolean.TRUE.equals(result.getData()) && !reportSuccess) {
                     reportSuccess = true;
                 }
             } catch (Exception e) {
-                log.error("Failed to report Executor information!",e);
-            }finally {
+                log.error("Failed to report Executor information!", e);
+            } finally {
                 reportLock.unlock();
             }
-        }else {
+        } else {
             log.debug("Failed to acquire the lock, skipping execution.");
         }
     }
@@ -108,72 +109,82 @@ public class TaskConsumer {
     /**
      * Main task consumption method that runs periodically.
      *
-     * <p>This method is scheduled to run every 10 seconds with an initial delay of 30 seconds.
-     * It uses a lock to ensure only one instance processes tasks at a time, preventing
-     * concurrent execution issues in distributed environments.
+     * <p>This method is scheduled to run every 10 seconds with an initial delay of 30 seconds. It
+     * uses a lock to ensure only one instance processes tasks at a time, preventing concurrent
+     * execution issues in distributed environments.
      *
      * <p>The method will:
+     *
      * <ul>
-     *   <li>Attempt to acquire a lock for exclusive task processing</li>
-     *   <li>Poll for available tasks if lock is acquired</li>
-     *   <li>Dispatch tasks to the execution engine</li>
-     *   <li>Handle any exceptions that occur during processing</li>
+     *   <li>Attempt to acquire a lock for exclusive task processing
+     *   <li>Poll for available tasks if lock is acquired
+     *   <li>Dispatch tasks to the execution engine
+     *   <li>Handle any exceptions that occur during processing
      * </ul>
      *
      * @throws Exception if task processing encounters an error
      */
     @Async
     @SneakyThrows(Exception.class)
-    @Scheduled(fixedRate = 10000,initialDelay = 30000)
-    public void run(){
-        if(reportSuccess && taskScheduleLock.tryLock()){
-            try{
+    @Scheduled(fixedRate = 10000, initialDelay = 30000)
+    public void run() {
+        if (reportSuccess && taskScheduleLock.tryLock()) {
+            try {
                 log.debug("Start executing the task.");
                 process();
-            }catch (Exception e){
+            } catch (Exception e) {
                 log.error("Task execution encountered an exception!");
-                log.error(e.getMessage(),e);
+                log.error(e.getMessage(), e);
                 throw e;
-            }finally {
+            } finally {
                 taskScheduleLock.unlock();
             }
-        }else{
+        } else {
             log.debug("Failed to acquire the lock, skipping execution.");
         }
     }
 
     private void process() throws IOException {
-        log.info("Start consuming task, consumer group [{}]",runnerEnv.getExecutorRegion());
-        if(System.currentTimeMillis() < watermark){
+        log.info("Start consuming task, consumer group [{}]", runnerEnv.getExecutorRegion());
+        if (System.currentTimeMillis() < watermark) {
             return;
         }
-        if(executorProcessHandle.queueCapacity()>0){
-            int fetchSize = Math.min(Math.toIntExact(executorProcessHandle.queueCapacity()),BATCH_FETCH_MAX_SIZE);
-            TaskFetchResult taskInfoResp = managerApi.tryFastFetchTasks(
-                    runnerEnv.getExecutorRegion(),
-                    runnerEnv.getRunnerInstanceId(),
-                    fetchSize,
-                    runnerEnv.getHttpEncryptKey(),
-                    ExecutorInfoUtils.signingHeaders(ExecutorTaskOps.FETCH, runnerEnv.getRunnerInstanceId()));
-            if(taskInfoResp.isEmpty()){
+        if (executorProcessHandle.queueCapacity() > 0) {
+            int fetchSize =
+                    Math.min(
+                            Math.toIntExact(executorProcessHandle.queueCapacity()),
+                            BATCH_FETCH_MAX_SIZE);
+            TaskFetchResult taskInfoResp =
+                    managerApi.tryFastFetchTasks(
+                            runnerEnv.getExecutorRegion(),
+                            runnerEnv.getRunnerInstanceId(),
+                            fetchSize,
+                            runnerEnv.getHttpEncryptKey(),
+                            ExecutorInfoUtils.signingHeaders(
+                                    ExecutorTaskOps.FETCH, runnerEnv.getRunnerInstanceId()));
+            if (taskInfoResp.isEmpty()) {
                 log.info("There are no tasks to process.");
                 // When unable to obtain a task, reduce the fetch frequency.
                 watermark = System.currentTimeMillis() + 30_000;
                 return;
             }
-            if(executorProcessHandle.isNowBusy()){
+            if (executorProcessHandle.isNowBusy()) {
                 log.info("This executor is too busy!");
                 // When executor is too busy, reduce the fetch frequency.
                 watermark = System.currentTimeMillis() + 30_000;
             }
-            List<String> pluginWhiteList =  runnerEnv.getPluginWhiteList();
+            List<String> pluginWhiteList = runnerEnv.getPluginWhiteList();
             List<HerculesRunnableTaskInfo> filteredTask = new ArrayList<>();
             for (HerculesRunnableTaskInfo taskInfo : taskInfoResp.getTaskInfoList()) {
-                if(CollectionUtils.isNotEmpty(pluginWhiteList) && !pluginWhiteList.contains(taskInfo.getPluginHandle())){
-                    log.error("The executor is configured with a whitelist, " +
-                            "plugin [{}] cannot be loaded and executed by this executor. " +
-                            "Whitelist information: [{}].",taskInfo.getPluginHandle(),runnerEnv.getPluginWhiteList());
-                }else {
+                if (CollectionUtils.isNotEmpty(pluginWhiteList)
+                        && !pluginWhiteList.contains(taskInfo.getPluginHandle())) {
+                    log.error(
+                            "The executor is configured with a whitelist, "
+                                    + "plugin [{}] cannot be loaded and executed by this executor. "
+                                    + "Whitelist information: [{}].",
+                            taskInfo.getPluginHandle(),
+                            runnerEnv.getPluginWhiteList());
+                } else {
                     filteredTask.add(taskInfo);
                 }
             }
@@ -187,8 +198,8 @@ public class TaskConsumer {
              * At this point, to reduce the probability of conflicts, we had better process each
              * element separately.
              * */
-            if(!filteredTask.isEmpty()){
-                process(filteredTask,!taskInfoResp.isCrossPartition());
+            if (!filteredTask.isEmpty()) {
+                process(filteredTask, !taskInfoResp.isCrossPartition());
             }
         }
     }
@@ -212,41 +223,58 @@ public class TaskConsumer {
         executorProcessHandle.handle(taskInfo);
     }
 
-    private void process(List<HerculesRunnableTaskInfo> filteredTask, boolean batchProcess) throws IOException {
-        if(batchProcess){
-            List<String> ids = filteredTask.stream().map(HerculesRunnableTaskInfo::getId).collect(Collectors.toList());
-            BaseResponse<BatchTaskLockProcessResult> resp = managerApi.tryLockBatchTask(new BatchLockRequest()
-                            .setExecutorId(runnerEnv.getRunnerInstanceId())
-                            .setExecutorRegion(runnerEnv.getExecutorRegion())
-                            .setTaskIds(ids),
-                    ExecutorInfoUtils.signingHeaders(ExecutorTaskOps.LOCK, ExecutorInfoUtils.buildSignSubject(ids)));
-            if(resp.getCode()!=200){
-                log.error("Unable to lock the task, skipping execution. Response body[{}]", JacksonUtils.writeValueAsString(resp));
+    private void process(List<HerculesRunnableTaskInfo> filteredTask, boolean batchProcess)
+            throws IOException {
+        if (batchProcess) {
+            List<String> ids =
+                    filteredTask.stream()
+                            .map(HerculesRunnableTaskInfo::getId)
+                            .collect(Collectors.toList());
+            BaseResponse<BatchTaskLockProcessResult> resp =
+                    managerApi.tryLockBatchTask(
+                            new BatchLockRequest()
+                                    .setExecutorId(runnerEnv.getRunnerInstanceId())
+                                    .setExecutorRegion(runnerEnv.getExecutorRegion())
+                                    .setTaskIds(ids),
+                            ExecutorInfoUtils.signingHeaders(
+                                    ExecutorTaskOps.LOCK, ExecutorInfoUtils.buildSignSubject(ids)));
+            if (resp.getCode() != 200) {
+                log.error(
+                        "Unable to lock the task, skipping execution. Response body[{}]",
+                        JacksonUtils.writeValueAsString(resp));
                 return;
             }
             BatchTaskLockProcessResult data = resp.getData();
             for (HerculesRunnableTaskInfo taskInfo : filteredTask) {
-                TaskInfoLockResult lockResult = Optional.ofNullable(data.getLockResults())
-                        .orElse(new HashMap<>()).get(taskInfo.getId());
+                TaskInfoLockResult lockResult =
+                        Optional.ofNullable(data.getLockResults())
+                                .orElse(new HashMap<>())
+                                .get(taskInfo.getId());
                 if (TaskInfoLockResult.SUCCESS == lockResult) {
                     handleOneTask(taskInfo);
                 } else {
-                    log.warn("Unable to lock the task[{}], result [{}], skipping execution.", taskInfo.getId(), lockResult);
+                    log.warn(
+                            "Unable to lock the task[{}], result [{}], skipping execution.",
+                            taskInfo.getId(),
+                            lockResult);
                 }
             }
-        }else{
+        } else {
             for (HerculesRunnableTaskInfo taskInfo : filteredTask) {
-                BaseResponse<Boolean> result = managerApi.tryLockOneTask(
-                        runnerEnv.getExecutorRegion(),
-                        runnerEnv.getRunnerInstanceId(),
-                        taskInfo.getId(),
-                        ExecutorInfoUtils.signingHeaders(ExecutorTaskOps.LOCK, taskInfo.getId())
-                );
-                if(result.getCode()!=200){
-                    log.error("Unable to lock the task, skipping execution. Response body[{}]", JacksonUtils.writeValueAsString(result));
+                BaseResponse<Boolean> result =
+                        managerApi.tryLockOneTask(
+                                runnerEnv.getExecutorRegion(),
+                                runnerEnv.getRunnerInstanceId(),
+                                taskInfo.getId(),
+                                ExecutorInfoUtils.signingHeaders(
+                                        ExecutorTaskOps.LOCK, taskInfo.getId()));
+                if (result.getCode() != 200) {
+                    log.error(
+                            "Unable to lock the task, skipping execution. Response body[{}]",
+                            JacksonUtils.writeValueAsString(result));
                     continue;
                 }
-                if(Boolean.TRUE.equals(result.getData())){
+                if (Boolean.TRUE.equals(result.getData())) {
                     handleOneTask(taskInfo);
                 } else {
                     log.warn("Unable to retrieve the task, skipping execution.");

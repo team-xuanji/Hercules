@@ -1,10 +1,10 @@
 package team.magic.flute.hercules.twelve.labors.service.impl;
 
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
+import org.springframework.stereotype.Service;
 import team.magic.flute.hercules.twelve.labors.dao.entity.CmsDataDownloadTaskDefPO;
 import team.magic.flute.hercules.twelve.labors.dao.mapper.CmsDataDownloadTaskDefMapper;
 import team.magic.flute.hercules.twelve.labors.service.CmsDataDownloadTaskDefService;
-import org.springframework.stereotype.Service;
 
 /**
  * CMS Data Download Task Definition Service Implementation
@@ -12,5 +12,6 @@ import org.springframework.stereotype.Service;
  * @author Hercules
  */
 @Service
-public class CmsDataDownloadTaskDefServiceImpl extends ServiceImpl<CmsDataDownloadTaskDefMapper, CmsDataDownloadTaskDefPO> implements CmsDataDownloadTaskDefService {
-}
+public class CmsDataDownloadTaskDefServiceImpl
+        extends ServiceImpl<CmsDataDownloadTaskDefMapper, CmsDataDownloadTaskDefPO>
+        implements CmsDataDownloadTaskDefService {}

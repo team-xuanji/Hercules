@@ -1,5 +1,7 @@
-#FROM hub.shuyun.com/java/base:oracle-8u152-1.1
-FROM shuyun-pass-acr-registry.cn-zhangjiakou.cr.aliyuncs.com/shuyun-pass/java-base-oracle-8u152:1.0.0
+# Phase 2 (JDK 17 + Spring Boot 4.1.1): switched from the private Oracle JDK 8u152 base
+# (not container-aware) to the public Eclipse Temurin 17 JRE image. The team can retag this
+# into their private registry if a fully air-gapped build is required.
+FROM eclipse-temurin:17-jre
 
 
 MAINTAINER wentjiang "<wentjiang@sina.com>"
@@ -21,7 +23,10 @@ EXPOSE 8080
 
 #ENV ENVIRONMENT = "qa"
 
-ENV JAVA_OPTS="-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XX:MaxRAMFraction=3"
+# Replaces JDK8 flags: -XX:+UseCGroupMemoryLimitForHeap (removed since JDK 11) and
+# -XX:MaxRAMFraction=3 -> -XX:MaxRAMPercentage=33.3 (= 100/3). G1 is the JDK 17 default GC,
+# so no explicit collector flag is needed.
+ENV JAVA_OPTS="-XX:MaxRAMPercentage=33.3"
 
 # Secret key that must be configured for each application (replace with current service key)
 #ENV spectrum.key etl-msg-service

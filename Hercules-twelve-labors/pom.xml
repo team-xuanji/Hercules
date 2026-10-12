@@ -16,34 +16,18 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <cem-web-sdk.version>1.0.6.RELEASE</cem-web-sdk.version>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
     </properties>
 
     <dependencies>
 
-        <!--        &lt;!&ndash; spring boot3 support &ndash;&gt;-->
-        <!--        <dependency>-->
-        <!--            <groupId>com.baomidou</groupId>-->
-        <!--            <artifactId>mybatis-plus-spring-boot3-starter</artifactId>-->
-        <!--        </dependency>-->
-
-        <!--        &lt;!&ndash; jdk 11+ support &ndash;&gt;-->
-        <!--        <dependency>-->
-        <!--            <groupId>com.baomidou</groupId>-->
-        <!--            <artifactId>mybatis-plus-jsqlparser</artifactId>-->
-        <!--        </dependency>-->
-
-        <!-- spring boot2 support -->
+        <!-- MyBatis-Plus Boot 4 starter (Jakarta namespace) + jsqlparser (JDK11+). -->
         <dependency>
             <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-boot-starter</artifactId>
+            <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
         </dependency>
-
-        <!-- jdk 8+ support -->
         <dependency>
             <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-jsqlparser-4.9</artifactId>
+            <artifactId>mybatis-plus-jsqlparser</artifactId>
         </dependency>
 
         <dependency>
@@ -68,9 +52,19 @@
             <artifactId>okhttp</artifactId>
         </dependency>
 
+        <!-- Pin Jackson 2 databind + annotations explicitly: feign-jackson 13.x still uses
+             com.fasterxml Jackson 2 APIs, while Hercules-common switched to Jackson 3. -->
         <dependency>
-            <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-boot-starter</artifactId>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
         </dependency>
 
         <dependency>
@@ -112,10 +106,12 @@
         </dependency>
 
 
+        <!-- springdoc-openapi-starter-webmvc-ui 3.x = Boot 4 line; replaces the legacy 1.6.15
+             springdoc-openapi-ui (Boot 2 only). -->
         <dependency>
             <groupId>org.springdoc</groupId>
-            <artifactId>springdoc-openapi-ui</artifactId>
-            <version>1.6.15</version> <!-- Designed specifically for Spring Boot 2.x -->
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>3.1.1</version>
         </dependency>
 
         <!-- Test dependencies -->
@@ -213,13 +209,12 @@
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.8.1</version>
+                <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
-                    <encoding>UTF-8</encoding>
-                    <skip>true</skip>
+                    <!-- Skip JUnit 5 @Tag("integration") tests (full Spring context,
+                         MySQL/OSS) in the default mvn test run. Re-enable with
+                         -DexcludedGroups= on the command line. -->
+                    <excludedGroups>integration</excludedGroups>
                 </configuration>
             </plugin>
         </plugins>

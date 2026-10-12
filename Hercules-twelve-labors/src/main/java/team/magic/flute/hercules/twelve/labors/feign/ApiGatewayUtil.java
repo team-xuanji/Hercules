@@ -1,8 +1,5 @@
 package team.magic.flute.hercules.twelve.labors.feign;
 
-import lombok.experimental.UtilityClass;
-import org.apache.commons.lang3.StringUtils;
-
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -15,12 +12,14 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import lombok.experimental.UtilityClass;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * API Gateway Utility for Business Access Gateway
  *
- * <p>Utility class for generating API gateway headers and signatures required for
- * secure communication within the Hercules business access gateway architecture.
+ * <p>Utility class for generating API gateway headers and signatures required for secure
+ * communication within the Hercules business access gateway architecture.
  *
  * @author Hercules Team
  * @version 1.0
@@ -29,15 +28,16 @@ import java.util.Set;
 @UtilityClass
 public class ApiGatewayUtil {
 
-    public static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    public static final DateTimeFormatter DATE_TIME_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private static final String HEADER_SERVICE = "X-Caller-Service";
     private static final String HEADER_TIMESTAMP = "X-Caller-Timestamp";
     private static final String HEADER_SIGN = "X-Caller-Sign";
     private static final String HEADER_KEY = "X-Caller-Key";
 
-
-    public static Map<String, String> generateGatewayHeader(String url, String caller, String secret) throws URISyntaxException {
+    public static Map<String, String> generateGatewayHeader(
+            String url, String caller, String secret) throws URISyntaxException {
         return generateGatewayHeader(new URI(url), caller, secret);
     }
 
@@ -50,7 +50,8 @@ public class ApiGatewayUtil {
         String requestPath = pathSegments.length > 2 ? "/" + pathSegments[2] : "";
 
         String timestamp = LocalDateTime.now().format(DATE_TIME_FORMATTER);
-        String sign = generateSign(contextPath, contextPath, version, timestamp, secret, requestPath);
+        String sign =
+                generateSign(contextPath, contextPath, version, timestamp, secret, requestPath);
 
         headers.put(HEADER_SERVICE, contextPath);
         headers.put(HEADER_TIMESTAMP, timestamp);
@@ -60,11 +61,22 @@ public class ApiGatewayUtil {
         return headers;
     }
 
-
-    private static String generateSign(String callerService, String contextPath, String version, String timestamp, String serviceSecret, String requestPath) {
+    private static String generateSign(
+            String callerService,
+            String contextPath,
+            String version,
+            String timestamp,
+            String serviceSecret,
+            String requestPath) {
         String sign = "";
-        if (callerService == null || callerService.equals("") || contextPath == null || contextPath.equals("")
-                || timestamp == null || timestamp.equals("") || serviceSecret == null || serviceSecret.equals("")) {
+        if (callerService == null
+                || callerService.equals("")
+                || contextPath == null
+                || contextPath.equals("")
+                || timestamp == null
+                || timestamp.equals("")
+                || serviceSecret == null
+                || serviceSecret.equals("")) {
             return sign;
         }
         Map<String, String> map = new LinkedHashMap<>();
@@ -88,7 +100,8 @@ public class ApiGatewayUtil {
         return sign;
     }
 
-    private static String generateMD5Sign(String secret, Map<String, String> parameters) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+    private static String generateMD5Sign(String secret, Map<String, String> parameters)
+            throws NoSuchAlgorithmException, UnsupportedEncodingException {
         MessageDigest md5 = MessageDigest.getInstance("MD5");
         byte[] bytes = md5.digest(generateConcatSign(secret, parameters).getBytes("utf-8"));
         return byteToHex(bytes);
@@ -116,8 +129,9 @@ public class ApiGatewayUtil {
         return sb.toString().toUpperCase();
     }
 
-
     /**
+     *
+     *
      * <pre>
      *     ("a/b/c", 1) -> ["a/b/c"]
      *     ("a/b/c", 2) -> ["a", "b/c"]
@@ -129,7 +143,7 @@ public class ApiGatewayUtil {
      */
     public static String[] pathSegments(String path, int max) {
         if ("".equals(path) || "/".equals(path) || "//".equals(path)) {
-            return new String[]{""};
+            return new String[] {""};
         }
         int beginIndex = 0, endIndex = path.length();
         if (path.charAt(beginIndex) == '/') {
@@ -138,6 +152,7 @@ public class ApiGatewayUtil {
         if (path.charAt(endIndex - 1) == '/') {
             endIndex--;
         }
-        return StringUtils.splitByWholeSeparatorPreserveAllTokens(path.substring(beginIndex, endIndex), "/", max);
+        return StringUtils.splitByWholeSeparatorPreserveAllTokens(
+                path.substring(beginIndex, endIndex), "/", max);
     }
 }

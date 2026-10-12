@@ -1,6 +1,5 @@
 package team.magic.flute.hercules.common.classloader;
 
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.jar.JarEntry;
@@ -15,7 +14,8 @@ public class LocalJarInputStream extends InputStream {
         this.jarFile = localJarURLConnection.getJarFile();
         JarEntry jarEntry = jarFile.getJarEntry(localJarURLConnection.getEntryName());
         if (jarEntry == null || jarEntry.isDirectory()) {
-            throw new IOException(String.format("Resource not found:%s", localJarURLConnection.getURL()));
+            throw new IOException(
+                    String.format("Resource not found:%s", localJarURLConnection.getURL()));
         }
         this.inputStream = jarFile.getInputStream(jarEntry);
     }
@@ -27,21 +27,21 @@ public class LocalJarInputStream extends InputStream {
 
     public void close() throws IOException {
         IOException exception = null;
-        try{
-            if(inputStream!=null){
+        try {
+            if (inputStream != null) {
                 inputStream.close();
             }
-        }catch (IOException e){
+        } catch (IOException e) {
             exception = e;
         }
-        try{
-            if(jarFile!=null){
+        try {
+            if (jarFile != null) {
                 jarFile.close();
             }
         } catch (IOException e) {
             exception = e;
         }
-        if(exception!=null){
+        if (exception != null) {
             throw exception;
         }
     }

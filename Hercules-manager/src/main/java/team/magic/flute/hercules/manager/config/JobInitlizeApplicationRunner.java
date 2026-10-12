@@ -1,14 +1,12 @@
 package team.magic.flute.hercules.manager.config;
 
-
-
-import team.magic.flute.hercules.manager.util.SpringContextUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
+import team.magic.flute.hercules.manager.util.SpringContextUtil;
 
 /**
  * @author Aida
@@ -18,8 +16,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class JobInitlizeApplicationRunner implements ApplicationRunner {
 
-    @Autowired
-    private ApplicationContext applicationContext;
+    @Autowired private ApplicationContext applicationContext;
 
     @Override
     public void run(ApplicationArguments args) {

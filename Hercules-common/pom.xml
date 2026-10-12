@@ -15,8 +15,6 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
     </properties>
 
     <dependencies>
@@ -36,30 +34,31 @@
             <artifactId>fory-core</artifactId>
         </dependency>
 
+        <!-- Jackson 3 core (tools.jackson.core.*). Coexists with Jackson 2 databind
+             (com.fasterxml.jackson.core:jackson-databind) which is inherited transitively
+             from feign-jackson in executor/twelve-labors. -->
+        <!-- Jackson 3 keeps annotations in the com.fasterxml.jackson.annotation
+             package (published as com.fasterxml.jackson.core:jackson-annotations 2.x),
+             so code keeps those imports; core/ databind move to tools.jackson. -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-annotations</artifactId>
         </dependency>
 
         <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
+            <groupId>tools.jackson.core</groupId>
             <artifactId>jackson-core</artifactId>
         </dependency>
 
         <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
+            <groupId>tools.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>com.fasterxml.jackson.datatype</groupId>
-            <artifactId>jackson-datatype-jdk8</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.fasterxml.jackson.datatype</groupId>
-            <artifactId>jackson-datatype-jsr310</artifactId>
-        </dependency>
+        <!-- Jackson 3 JavaTime JSR-310 is bundled inside jackson-databind 3.1.x under
+             tools.jackson.databind.ext.javatime (JavaTimeInitializer auto-registers on
+             bootstrap). No separate jackson-datatype-jsr310 dep needed; the tools.jackson.datatype
+             namespace has no GA artifact (only a stale 3.0.0-rc2, rejected). -->
 
         <dependency>
             <groupId>com.github.f4b6a3</groupId>
@@ -96,11 +95,22 @@
             <artifactId>commons-io</artifactId>
         </dependency>
 
+        <!-- Jakarta Bean Validation API for the common DTO constraint annotations
+             (jakarta.validation.constraints.*). Provided at runtime by
+             spring-boot-starter-validation in manager/executor. -->
         <dependency>
-            <groupId>javax.validation</groupId>
-            <artifactId>validation-api</artifactId>
+            <groupId>jakarta.validation</groupId>
+            <artifactId>jakarta.validation-api</artifactId>
             <scope>provided</scope>
         </dependency>
 
+        <!-- JUnit 5 baseline for Hercules-common tests (JacksonUtils roundtrip, ExecutorInfoUtils, etc.). -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
+
 </project>

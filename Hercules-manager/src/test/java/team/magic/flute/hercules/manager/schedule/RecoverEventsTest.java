@@ -1,10 +1,29 @@
 package team.magic.flute.hercules.manager.schedule;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.conditions.AbstractWrapper;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,39 +44,18 @@ import team.magic.flute.hercules.manager.service.HerculesTaskManagerService;
 import team.magic.flute.hercules.manager.vo.AsyncRetryOneTaskRequestVO;
 import team.magic.flute.hercules.manager.vo.HerculesRecoverTaskInfoVO;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyCollection;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 /**
- * Pure unit tests for the tiered-recovery semantics in
- * {@link ScheduleBusinessProcessor#recoverEvents(RecoverEventLevel)} and the
- * dead-task scan's hand-off into the recover tables. No Spring context, no DB:
- * the MyBatis-Plus services are mocked and the generated UPDATE statements are
- * inspected through the wrapper API to pin the state-machine guards.
+ * Pure unit tests for the tiered-recovery semantics in {@link
+ * ScheduleBusinessProcessor#recoverEvents(RecoverEventLevel)} and the dead-task scan's hand-off
+ * into the recover tables. No Spring context, no DB: the MyBatis-Plus services are mocked and the
+ * generated UPDATE statements are inspected through the wrapper API to pin the state-machine
+ * guards.
  *
- * <p>These pin the invariants the 2026-10 recovery rework relies on:
- * duplicate recover rows for the same task collapse into one recovery;
- * only FAILED tasks are reset to INIT (both the executor-fail path and the
- * dead-task-scan path land the task in FAILED first); a task that is already
- * alive again is never duplicated; a task whose original row is gone is
- * resurrected under its original id.
+ * <p>These pin the invariants the 2026-10 recovery rework relies on: duplicate recover rows for the
+ * same task collapse into one recovery; only FAILED tasks are reset to INIT (both the executor-fail
+ * path and the dead-task-scan path land the task in FAILED first); a task that is already alive
+ * again is never duplicated; a task whose original row is gone is resurrected under its original
+ * id.
  */
 class RecoverEventsTest {
 
@@ -74,8 +72,11 @@ class RecoverEventsTest {
         // LambdaUpdateWrapper.set(...) resolves column names eagerly; without a
         // MyBatis bootstrap the entity TableInfo is absent and resolution throws
         // "can not find lambda cache". Register the entities the wrappers touch.
-        TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new MybatisConfiguration(), ""), HerculesTaskInfo.class);
-        TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new MybatisConfiguration(), ""), HerculesFailedTaskPo.class);
+        TableInfoHelper.initTableInfo(
+                new MapperBuilderAssistant(new MybatisConfiguration(), ""), HerculesTaskInfo.class);
+        TableInfoHelper.initTableInfo(
+                new MapperBuilderAssistant(new MybatisConfiguration(), ""),
+                HerculesFailedTaskPo.class);
     }
 
     @BeforeEach
@@ -100,8 +101,10 @@ class RecoverEventsTest {
         when(coordinator.getCurrentRunnerId()).thenReturn("runner-1");
     }
 
-    /** A recover-row snapshot as convert2FailedTaskPo produces it after the rework:
-     *  original id kept, status INIT, retry cursor already incremented. */
+    /**
+     * A recover-row snapshot as convert2FailedTaskPo produces it after the rework: original id
+     * kept, status INIT, retry cursor already incremented.
+     */
     private HerculesTaskInfo snapshot(String taskId) {
         return new HerculesTaskInfo()
                 .setId(taskId)
@@ -183,7 +186,8 @@ class RecoverEventsTest {
         // recovery safe under overlapping manager bucket windows.
         Collection<Object> values = params(update).values();
         assertTrue(values.contains("task-1"), "WHERE must pin the original task id");
-        assertTrue(values.contains(TaskStatus.FAILED.name()),
+        assertTrue(
+                values.contains(TaskStatus.FAILED.name()),
                 "WHERE must only match FAILED tasks, got params: " + values);
         // SET clears the stale owner and checkpoint (both bound to null params).
         String set = sqlSet(update);
@@ -198,7 +202,7 @@ class RecoverEventsTest {
     void taskWhoseOriginalRowIsGoneIsResurrectedUnderItsOriginalId() {
         HerculesFailedTaskPo row = recoverRow(101L, snapshot("task-1"));
         when(failedTaskService.list(any(Wrapper.class))).thenReturn(Collections.singletonList(row));
-        when(taskService.update(any())).thenReturn(false);      // guard matched nothing
+        when(taskService.update(any())).thenReturn(false); // guard matched nothing
         when(taskService.listByIds(anyCollection())).thenReturn(new ArrayList<>());
         when(taskService.saveBatch(anyCollection())).thenReturn(true);
 
@@ -209,7 +213,10 @@ class RecoverEventsTest {
         verify(taskService).saveBatch(inserted.capture());
         assertEquals(1, inserted.getValue().size());
         HerculesTaskInfo resurrected = (HerculesTaskInfo) inserted.getValue().iterator().next();
-        assertEquals("task-1", resurrected.getId(), "resurrection must keep the original id (ASSIGN_ID will not re-generate a non-null id)");
+        assertEquals(
+                "task-1",
+                resurrected.getId(),
+                "resurrection must keep the original id (ASSIGN_ID will not re-generate a non-null id)");
         assertEquals(TaskStatus.INIT.name(), resurrected.getStatus());
         assertNull(resurrected.getOwnerId());
         verify(failedTaskService).removeBatchByIds(anyCollection());
@@ -223,11 +230,13 @@ class RecoverEventsTest {
         HerculesFailedTaskPo row = recoverRow(101L, snapshot("task-1"));
         when(failedTaskService.list(any(Wrapper.class))).thenReturn(Collections.singletonList(row));
         when(taskService.update(any())).thenReturn(false);
-        HerculesTaskInfo aliveAgain = new HerculesTaskInfo()
-                .setId("task-1")
-                .setStatus(TaskStatus.RUNNING.name())
-                .setOwnerId("exec-alive");
-        when(taskService.listByIds(anyCollection())).thenReturn(Collections.singletonList(aliveAgain));
+        HerculesTaskInfo aliveAgain =
+                new HerculesTaskInfo()
+                        .setId("task-1")
+                        .setStatus(TaskStatus.RUNNING.name())
+                        .setOwnerId("exec-alive");
+        when(taskService.listByIds(anyCollection()))
+                .thenReturn(Collections.singletonList(aliveAgain));
 
         processor.recoverEvents(RecoverEventLevel.HOT);
 
@@ -260,17 +269,24 @@ class RecoverEventsTest {
         // async-recover context. The scan registers a recover row and must mark
         // the dead execution FAILED (consumed later by recoverEvents), not
         // CANCELLED — CANCELLED would make the recover row a permanent no-op.
-        HerculesTaskInfo deadTask = new HerculesTaskInfo()
-                .setId("task-1")
-                .setStatus(TaskStatus.RUNNING.name())
-                .setOwnerId("exec-dead")
-                .setUpdateTime(LocalDateTime.now().minusSeconds(700))
-                .setAsyncRecoverContext(new FixedIntervalStrategy());
-        when(scanTasksService.list(any(Wrapper.class))).thenReturn(Collections.singletonList(deadTask));
-        when(executorInfoService.getAllExecutorInfo()).thenReturn(Collections.singletonList(
-                new HerculesExecutorInfo().setExecutorId("exec-alive")));
+        HerculesTaskInfo deadTask =
+                new HerculesTaskInfo()
+                        .setId("task-1")
+                        .setStatus(TaskStatus.RUNNING.name())
+                        .setOwnerId("exec-dead")
+                        .setUpdateTime(LocalDateTime.now().minusSeconds(700))
+                        .setAsyncRecoverContext(new FixedIntervalStrategy());
+        when(scanTasksService.list(any(Wrapper.class)))
+                .thenReturn(Collections.singletonList(deadTask));
+        when(executorInfoService.getAllExecutorInfo())
+                .thenReturn(
+                        Collections.singletonList(
+                                new HerculesExecutorInfo().setExecutorId("exec-alive")));
         when(taskManagerService.asyncRetryOneTask(any(AsyncRetryOneTaskRequestVO.class)))
-                .thenReturn(BaseResponse.success(new HerculesRecoverTaskInfoVO(new HerculesFailedTaskPo(), null, null)));
+                .thenReturn(
+                        BaseResponse.success(
+                                new HerculesRecoverTaskInfoVO(
+                                        new HerculesFailedTaskPo(), null, null)));
 
         processor.changeDeadTaskToCancelled();
 
@@ -279,15 +295,19 @@ class RecoverEventsTest {
         verify(scanTasksService, times(2)).update(captor.capture());
 
         List<Wrapper> updates = captor.getAllValues();
-        Wrapper failedReset = updates.stream()
-                .filter(w -> params(w).values().contains("task-1"))
-                .findFirst()
-                .orElseThrow(() -> new AssertionError("no update addressed task-1: " + updates));
+        Wrapper failedReset =
+                updates.stream()
+                        .filter(w -> params(w).values().contains("task-1"))
+                        .findFirst()
+                        .orElseThrow(
+                                () -> new AssertionError("no update addressed task-1: " + updates));
         Collection<Object> values = params(failedReset).values();
-        assertTrue(values.contains(TaskStatus.FAILED.name()),
+        assertTrue(
+                values.contains(TaskStatus.FAILED.name()),
                 "dead task with pending recovery must be marked FAILED, got params: " + values);
         for (Wrapper w : updates) {
-            assertFalse(params(w).values().contains(TaskStatus.CANCELLED.name()),
+            assertFalse(
+                    params(w).values().contains(TaskStatus.CANCELLED.name()),
                     "no dead task with pending recovery may be marked CANCELLED");
         }
     }

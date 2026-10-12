@@ -9,7 +9,7 @@ public class RecoverTableNameHandle implements TableNameHandler {
     private static final String SPLIT_TABLE = "HERCULES_RECOVER_TASKS";
 
     public static void setSuffix(String value) {
-        if(StringUtils.isNotBlank(value)){
+        if (StringUtils.isNotBlank(value)) {
             THREAD_LOCAL.set(value);
         }
     }
@@ -20,14 +20,15 @@ public class RecoverTableNameHandle implements TableNameHandler {
 
     @Override
     public String dynamicTableName(String sql, String tableName) {
-        if(SPLIT_TABLE.equalsIgnoreCase(tableName)){
+        if (SPLIT_TABLE.equalsIgnoreCase(tableName)) {
             String value = THREAD_LOCAL.get();
             if (value == null) {
-                throw new IllegalArgumentException("Please set the suffix for the task recovery table name.");
+                throw new IllegalArgumentException(
+                        "Please set the suffix for the task recovery table name.");
             } else {
                 return tableName + "_" + value;
             }
-        }else{
+        } else {
             return tableName;
         }
     }

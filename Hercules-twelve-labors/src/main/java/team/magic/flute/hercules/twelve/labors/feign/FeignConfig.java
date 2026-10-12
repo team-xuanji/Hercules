@@ -14,20 +14,19 @@ import feign.codec.ErrorDecoder;
 import feign.jackson.JacksonDecoder;
 import feign.jackson.JacksonEncoder;
 import feign.slf4j.Slf4jLogger;
-import okhttp3.ConnectionPool;
-import okhttp3.OkHttpClient;
-
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.concurrent.TimeUnit;
+import okhttp3.ConnectionPool;
+import okhttp3.OkHttpClient;
 
 /**
  * Feign Configuration for Business Access Gateway
  *
- * <p>Static configuration class providing pre-configured Feign components for
- * HTTP client communication within the Hercules business access gateway.
+ * <p>Static configuration class providing pre-configured Feign components for HTTP client
+ * communication within the Hercules business access gateway.
  *
  * @author Hercules Team
  * @version 1.0
@@ -44,25 +43,39 @@ public class FeignConfig {
     static Slf4jLogger slf4jLogger;
 
     static {
-        SimpleModule module = new SimpleModule()
-                .addSerializer(LocalDate.class, new LocalDateSerializer(DateTimeFormatter.ofPattern("yyyy-MM-dd")))
-                .addSerializer(LocalDateTime.class, new LocalDateTimeSerializer(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
-                .addDeserializer(LocalDate.class, new LocalDateDeserializer(DateTimeFormatter.ofPattern("yyyy-MM-dd")))
-                .addDeserializer(LocalDateTime.class, new LocalDateTimeDeserializer(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-        objectMapper = new ObjectMapper()
-                .registerModule(module)
-                .setSerializationInclusion(JsonInclude.Include.NON_NULL)
-                .configure(SerializationFeature.INDENT_OUTPUT, true)
-                .setDateFormat(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"))
-                .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
-                .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+        SimpleModule module =
+                new SimpleModule()
+                        .addSerializer(
+                                LocalDate.class,
+                                new LocalDateSerializer(DateTimeFormatter.ofPattern("yyyy-MM-dd")))
+                        .addSerializer(
+                                LocalDateTime.class,
+                                new LocalDateTimeSerializer(
+                                        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
+                        .addDeserializer(
+                                LocalDate.class,
+                                new LocalDateDeserializer(
+                                        DateTimeFormatter.ofPattern("yyyy-MM-dd")))
+                        .addDeserializer(
+                                LocalDateTime.class,
+                                new LocalDateTimeDeserializer(
+                                        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        objectMapper =
+                new ObjectMapper()
+                        .registerModule(module)
+                        .setSerializationInclusion(JsonInclude.Include.NON_NULL)
+                        .configure(SerializationFeature.INDENT_OUTPUT, true)
+                        .setDateFormat(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"))
+                        .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
+                        .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
 
-        okHttpClient = new OkHttpClient.Builder()
-                .readTimeout(30, TimeUnit.SECONDS)
-                .connectTimeout(30, TimeUnit.SECONDS)
-                .writeTimeout(40, TimeUnit.SECONDS)
-                .connectionPool(new ConnectionPool())
-                .build();
+        okHttpClient =
+                new OkHttpClient.Builder()
+                        .readTimeout(30, TimeUnit.SECONDS)
+                        .connectTimeout(30, TimeUnit.SECONDS)
+                        .writeTimeout(40, TimeUnit.SECONDS)
+                        .connectionPool(new ConnectionPool())
+                        .build();
         feignOkHttpClient = new feign.okhttp.OkHttpClient(okHttpClient);
 
         feignInterceptor = new FeignInterceptor();

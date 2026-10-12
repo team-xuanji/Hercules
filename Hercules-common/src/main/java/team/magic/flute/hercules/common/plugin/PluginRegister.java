@@ -5,20 +5,22 @@ import java.util.Map;
 /**
  * Plugin Registration Interface
  *
- * <p>This interface is responsible for providing plugin registration information
- * to the Hercules system. Every plugin JAR must contain exactly one implementation
- * of this interface to register all the plugins contained within the JAR.
+ * <p>This interface is responsible for providing plugin registration information to the Hercules
+ * system. Every plugin JAR must contain exactly one implementation of this interface to register
+ * all the plugins contained within the JAR.
  *
  * <p>The registration process works as follows:
+ *
  * <ol>
- *   <li>When a plugin JAR is uploaded to Hercules Manager, the system scans for
- *       implementations of this interface</li>
- *   <li>The {@link #getRegisterInfo()} method is called to retrieve plugin metadata</li>
- *   <li>Each plugin is registered in the system with its associated metadata</li>
- *   <li>The plugins become available for task execution</li>
+ *   <li>When a plugin JAR is uploaded to Hercules Manager, the system scans for implementations of
+ *       this interface
+ *   <li>The {@link #getRegisterInfo()} method is called to retrieve plugin metadata
+ *   <li>Each plugin is registered in the system with its associated metadata
+ *   <li>The plugins become available for task execution
  * </ol>
  *
  * <p>Example implementation:
+ *
  * <pre>{@code
  * @AutoService(PluginRegister.class)
  * public class MyPluginRegister implements PluginRegister {
@@ -47,11 +49,12 @@ import java.util.Map;
  * }</pre>
  *
  * <p>Important notes:
+ *
  * <ul>
- *   <li>Use {@code @AutoService(PluginRegister.class)} for automatic discovery</li>
- *   <li>Plugin names must be unique within the same plugin group</li>
- *   <li>Class names must be fully qualified and accessible from the plugin JAR</li>
- *   <li>Descriptions should be meaningful for operational and debugging purposes</li>
+ *   <li>Use {@code @AutoService(PluginRegister.class)} for automatic discovery
+ *   <li>Plugin names must be unique within the same plugin group
+ *   <li>Class names must be fully qualified and accessible from the plugin JAR
+ *   <li>Descriptions should be meaningful for operational and debugging purposes
  * </ul>
  *
  * @author Hercules Team
@@ -63,20 +66,21 @@ public interface PluginRegister {
     /**
      * Get registration information for all plugins in this JAR.
      *
-     * <p>This method returns a map containing the registration information for all
-     * plugins that should be registered from this JAR file. The map key is the
-     * plugin name (which must match the name returned by the plugin's {@code getName()}
-     * method), and the value is the registration metadata.
+     * <p>This method returns a map containing the registration information for all plugins that
+     * should be registered from this JAR file. The map key is the plugin name (which must match the
+     * name returned by the plugin's {@code getName()} method), and the value is the registration
+     * metadata.
      *
      * <p>The registration information includes:
+     *
      * <ul>
-     *   <li>Plugin name - unique identifier for the plugin</li>
-     *   <li>Class name - fully qualified class name of the plugin implementation</li>
-     *   <li>Description - human-readable description of the plugin's functionality</li>
+     *   <li>Plugin name - unique identifier for the plugin
+     *   <li>Class name - fully qualified class name of the plugin implementation
+     *   <li>Description - human-readable description of the plugin's functionality
      * </ul>
      *
-     * @return a map of plugin names to their registration information
-     *         (must not be null, but can be empty if no plugins to register)
+     * @return a map of plugin names to their registration information (must not be null, but can be
+     *     empty if no plugins to register)
      */
-    Map<String,PluginRegisterInfo> getRegisterInfo();
+    Map<String, PluginRegisterInfo> getRegisterInfo();
 }

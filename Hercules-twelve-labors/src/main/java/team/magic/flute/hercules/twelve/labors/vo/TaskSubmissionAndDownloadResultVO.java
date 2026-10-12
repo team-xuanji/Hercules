@@ -1,14 +1,13 @@
 package team.magic.flute.hercules.twelve.labors.vo;
 
-import team.magic.flute.hercules.common.status.TaskStatus;
+import java.time.LocalDateTime;
 import lombok.Data;
 import lombok.experimental.Accessors;
-
-import java.time.LocalDateTime;
+import team.magic.flute.hercules.common.status.TaskStatus;
 
 /**
- * Task Submission and Download Result VO
- * Used to return complete results for integrated task submission and download link retrieval
+ * Task Submission and Download Result VO Used to return complete results for integrated task
+ * submission and download link retrieval
  *
  * @author Hercules
  */
@@ -16,73 +15,45 @@ import java.time.LocalDateTime;
 @Accessors(chain = true)
 public class TaskSubmissionAndDownloadResultVO {
 
-    /**
-     * Task ID
-     */
+    /** Task ID */
     private Long taskId;
 
-    /**
-     * Business scenario key
-     */
+    /** Business scenario key */
     private String businessKey;
 
-    /**
-     * Task status
-     */
+    /** Task status */
     private TaskStatus taskStatus;
 
-    /**
-     * File download URL
-     */
+    /** File download URL */
     private String downloadUrl;
 
-    /**
-     * Download URL expiration time description
-     */
+    /** Download URL expiration time description */
     private String expirationTime;
 
-    /**
-     * Download URL generation time
-     */
+    /** Download URL generation time */
     private LocalDateTime generateTime;
 
-    /**
-     * Whether authentication is required
-     */
+    /** Whether authentication is required */
     private Boolean authRequired;
 
-    /**
-     * File path
-     */
+    /** File path */
     private String filePath;
 
-    /**
-     * Operation source
-     */
+    /** Operation source */
     private String operatorSource;
 
-    /**
-     * Task execution time (seconds)
-     */
+    /** Task execution time (seconds) */
     private Long executionTimeSeconds;
 
-    /**
-     * Polling count
-     */
+    /** Polling count */
     private Integer pollCount;
 
-    /**
-     * Task creation time
-     */
+    /** Task creation time */
     private LocalDateTime taskCreateTime;
 
-    /**
-     * Task completion time
-     */
+    /** Task completion time */
     private LocalDateTime taskCompleteTime;
 
-    /**
-     * Additional information
-     */
+    /** Additional information */
     private String remarks;
 }

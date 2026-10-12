@@ -5,8 +5,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 /**
  * API Failure Result for Business Access Gateway
  *
- * <p>Data transfer object for capturing API failure information in Feign
- * client error responses within the Hercules business access gateway.
+ * <p>Data transfer object for capturing API failure information in Feign client error responses
+ * within the Hercules business access gateway.
  *
  * @author Hercules Team
  * @version 1.0
@@ -14,10 +14,10 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class FailResult {
-    private int code ;
-    private String msg ;
-    private String remoteUrl ;
-    private boolean success ;
+    private int code;
+    private String msg;
+    private String remoteUrl;
+    private boolean success;
 
     public int getCode() {
         return code;

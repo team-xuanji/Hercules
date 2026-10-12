@@ -1,25 +1,22 @@
 package team.magic.flute.hercules.twelve.labors.feign;
 
-
-
-import team.magic.flute.hercules.twelve.labors.feign.bean.ApiConfigBean;
-import team.magic.flute.hercules.twelve.labors.feign.exceptions.ApiException;
 import feign.RequestInterceptor;
 import feign.RequestTemplate;
+import java.net.URISyntaxException;
+import java.util.*;
+import java.util.stream.Collectors;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-
-import java.net.URISyntaxException;
-import java.util.*;
-import java.util.stream.Collectors;
+import team.magic.flute.hercules.twelve.labors.feign.bean.ApiConfigBean;
+import team.magic.flute.hercules.twelve.labors.feign.exceptions.ApiException;
 
 /**
  * Feign Request Interceptor for Business Access Gateway
  *
- * <p>Request interceptor that adds authentication headers and gateway signatures
- * to outbound HTTP requests within the Hercules business access gateway.
+ * <p>Request interceptor that adds authentication headers and gateway signatures to outbound HTTP
+ * requests within the Hercules business access gateway.
  *
  * @author Hercules Team
  * @version 1.0
@@ -38,8 +35,7 @@ public class FeignInterceptor implements RequestInterceptor {
 
     private Map<String, Collection<String>> extraHeader = new HashMap<>();
 
-    public FeignInterceptor() {
-    }
+    public FeignInterceptor() {}
 
     public FeignInterceptor(String caller, String secret) {
         this.caller = caller;
@@ -51,10 +47,12 @@ public class FeignInterceptor implements RequestInterceptor {
         this.secret = config.getSign();
         Map<String, String> headers = config.getHeaders();
         if (Objects.nonNull(headers) && !headers.isEmpty()) {
-            headers.entrySet()
-                    .stream()
+            headers.entrySet().stream()
                     .filter(e -> StringUtils.isNotBlank(e.getValue()))
-                    .forEach(e -> this.extraHeader.put(e.getKey(), Collections.singletonList(e.getValue())));
+                    .forEach(
+                            e ->
+                                    this.extraHeader.put(
+                                            e.getKey(), Collections.singletonList(e.getValue())));
         }
     }
 
@@ -62,12 +60,18 @@ public class FeignInterceptor implements RequestInterceptor {
     public void apply(RequestTemplate template) {
         try {
             String url = template.feignTarget().url();
-            Map<String, Collection<String>> gateHeaders = ApiGatewayUtil.generateGatewayHeader(url + template.url(), caller, secret)
-                    .entrySet().stream()
-                    .collect(Collectors.toMap(Map.Entry::getKey,
-                            kv -> Collections.singletonList(kv.getValue())));
+            Map<String, Collection<String>> gateHeaders =
+                    ApiGatewayUtil.generateGatewayHeader(url + template.url(), caller, secret)
+                            .entrySet()
+                            .stream()
+                            .collect(
+                                    Collectors.toMap(
+                                            Map.Entry::getKey,
+                                            kv -> Collections.singletonList(kv.getValue())));
 
-            gateHeaders.put("RequestTime", Collections.singletonList(String.valueOf(System.currentTimeMillis())));
+            gateHeaders.put(
+                    "RequestTime",
+                    Collections.singletonList(String.valueOf(System.currentTimeMillis())));
             if (Objects.nonNull(extraHeader) && !extraHeader.isEmpty()) {
                 gateHeaders.putAll(extraHeader);
             }
@@ -75,7 +79,5 @@ public class FeignInterceptor implements RequestInterceptor {
         } catch (URISyntaxException e) {
             throw new ApiException(e.getMessage());
         }
-
     }
-
 }

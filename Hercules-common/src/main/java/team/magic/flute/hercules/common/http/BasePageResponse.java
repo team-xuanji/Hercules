@@ -1,9 +1,6 @@
 package team.magic.flute.hercules.common.http;
 
-
-/**
- * 2021-12-27  CL
- **/
+/** 2021-12-27 CL */
 public class BasePageResponse<T extends PageData<?>> extends BaseResponse<T> {
 
     private T data;
@@ -47,10 +44,8 @@ public class BasePageResponse<T extends PageData<?>> extends BaseResponse<T> {
         return data;
     }
 
-
     @Override
     public void setData(T data) {
         this.data = data;
     }
 }
-

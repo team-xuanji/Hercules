@@ -5,5 +5,4 @@ import org.apache.ibatis.annotations.Mapper;
 import team.magic.flute.hercules.manager.dao.po.HerculesExecutorInfo;
 
 @Mapper
-public interface HerculesExecutorInfoMapper extends BaseMapper<HerculesExecutorInfo> {
-}
+public interface HerculesExecutorInfoMapper extends BaseMapper<HerculesExecutorInfo> {}

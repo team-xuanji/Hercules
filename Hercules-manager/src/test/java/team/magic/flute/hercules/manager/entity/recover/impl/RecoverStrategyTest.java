@@ -1,21 +1,20 @@
 package team.magic.flute.hercules.manager.entity.recover.impl;
 
-import org.junit.jupiter.api.Test;
-import team.magic.flute.hercules.common.util.JacksonUtils;
-import team.magic.flute.hercules.manager.entity.recover.RecoverStrategy;
-
-import java.time.LocalDateTime;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.LocalDateTime;
+import org.junit.jupiter.api.Test;
+import team.magic.flute.hercules.common.util.JacksonUtils;
+import team.magic.flute.hercules.manager.entity.recover.RecoverStrategy;
+
 /**
- * Pure unit tests for the recover-strategy implementations and their Jackson
- * polymorphic wiring. No Spring context, no DB. These pin the retry cadence and
- * finish-threshold invariants the recover dispatch loop depends on.
+ * Pure unit tests for the recover-strategy implementations and their Jackson polymorphic wiring. No
+ * Spring context, no DB. These pin the retry cadence and finish-threshold invariants the recover
+ * dispatch loop depends on.
  */
 class RecoverStrategyTest {
 
@@ -34,7 +33,9 @@ class RecoverStrategyTest {
             LocalDateTime next = s.processAndIncrementNextTimeStamp();
             assertEquals(++expectedRetry, s.getRetryTimes());
             // next must be roughly now + dailyMs/1000 seconds (allow a generous clock skew window).
-            assertTrue(next.isAfter(now.plusSeconds(FixedIntervalStrategy.DEFAULT_DAILY_MS / 1000 - 5)));
+            assertTrue(
+                    next.isAfter(
+                            now.plusSeconds(FixedIntervalStrategy.DEFAULT_DAILY_MS / 1000 - 5)));
             assertFalse(s.processFinished());
         }
     }
@@ -48,7 +49,8 @@ class RecoverStrategyTest {
             s.processAndIncrementNextTimeStamp();
         }
         assertEquals(s.getMaxRetryTimes(), s.getRetryTimes());
-        assertFalse(s.processFinished(), "at exactly maxRetryTimes the strategy is NOT yet finished");
+        assertFalse(
+                s.processFinished(), "at exactly maxRetryTimes the strategy is NOT yet finished");
 
         s.processAndIncrementNextTimeStamp(); // retryTimes = maxRetryTimes + 1
         assertTrue(s.processFinished(), "one past maxRetryTimes must mark the strategy finished");
@@ -67,10 +69,13 @@ class RecoverStrategyTest {
         for (int i = 0; i < 1200; i++) {
             s.processAndIncrementNextTimeStamp();
         }
-        assertEquals(GradualDecelerationStrategy.DEFAULT_MAX_STEP, s.getStep(),
+        assertEquals(
+                GradualDecelerationStrategy.DEFAULT_MAX_STEP,
+                s.getStep(),
                 "step must cap at maxStep and never overflow");
         assertEquals(1200L, s.getRetryTimes());
-        assertTrue(s.processFinished(), "1200 retries exceeds maxRetryTimes(150), must be finished");
+        assertTrue(
+                s.processFinished(), "1200 retries exceeds maxRetryTimes(150), must be finished");
     }
 
     @Test
@@ -89,7 +94,8 @@ class RecoverStrategyTest {
     void fixedIntervalRoundTripsThroughJacksonAsRecoverStrategy() {
         // The recover context is stored as JSON keyed by the discriminator; the async
         // path must deserialize a FIXED_INTERVAL payload back into the right subclass.
-        FixedIntervalStrategy original = new FixedIntervalStrategy().setDailyMs(12_000L).setMaxRetryTimes(7L);
+        FixedIntervalStrategy original =
+                new FixedIntervalStrategy().setDailyMs(12_000L).setMaxRetryTimes(7L);
         String json = JacksonUtils.writeValueAsString(original);
 
         RecoverStrategy recovered = JacksonUtils.readValue(json, RecoverStrategy.class);
@@ -102,11 +108,12 @@ class RecoverStrategyTest {
 
     @Test
     void gradualDecelerationRoundTripsThroughJacksonAsRecoverStrategy() {
-        GradualDecelerationStrategy original = new GradualDecelerationStrategy()
-                .setBasicStep(1_000L)
-                .setMaxStep(60_000L)
-                .setStepIncrement(500L)
-                .setMaxRetryTimes(3L);
+        GradualDecelerationStrategy original =
+                new GradualDecelerationStrategy()
+                        .setBasicStep(1_000L)
+                        .setMaxStep(60_000L)
+                        .setStepIncrement(500L)
+                        .setMaxRetryTimes(3L);
         String json = JacksonUtils.writeValueAsString(original);
 
         RecoverStrategy recovered = JacksonUtils.readValue(json, RecoverStrategy.class);

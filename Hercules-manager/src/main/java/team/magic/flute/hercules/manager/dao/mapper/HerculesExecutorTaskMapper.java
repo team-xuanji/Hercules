@@ -1,11 +1,8 @@
 package team.magic.flute.hercules.manager.dao.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import team.magic.flute.hercules.manager.dao.po.HerculesTaskInfo;
 import org.apache.ibatis.annotations.Mapper;
-
+import team.magic.flute.hercules.manager.dao.po.HerculesTaskInfo;
 
 @Mapper
-public interface HerculesExecutorTaskMapper extends BaseMapper<HerculesTaskInfo> {
-
-}
+public interface HerculesExecutorTaskMapper extends BaseMapper<HerculesTaskInfo> {}

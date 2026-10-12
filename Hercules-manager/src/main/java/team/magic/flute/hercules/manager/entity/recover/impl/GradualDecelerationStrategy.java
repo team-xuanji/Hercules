@@ -1,19 +1,15 @@
 package team.magic.flute.hercules.manager.entity.recover.impl;
 
-
-import team.magic.flute.hercules.manager.entity.recover.RecoverStrategy;
+import java.time.LocalDateTime;
 import lombok.Data;
 import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
+import team.magic.flute.hercules.manager.entity.recover.RecoverStrategy;
 
-import java.time.LocalDateTime;
-
-/**
- * The interval between retries gradually increases.
- */
+/** The interval between retries gradually increases. */
 @Slf4j
 @Data
-@Accessors(chain=true)
+@Accessors(chain = true)
 public class GradualDecelerationStrategy implements RecoverStrategy {
     private boolean persistence = false;
     private long basicStep = DEFAULT_BASIC_STEP;
@@ -24,25 +20,25 @@ public class GradualDecelerationStrategy implements RecoverStrategy {
     private long maxRetryTimes = DEFAULT_MAX_RETRY_TIMES;
 
     public static final long DEFAULT_BASIC_STEP = 60L * 10L * 1000L;
-    public static final long DEFAULT_MAX_STEP = 3600L * 24L * 1000L*7L;
+    public static final long DEFAULT_MAX_STEP = 3600L * 24L * 1000L * 7L;
     public static final long DEFAULT_INCREMENT_STEP = 60L * 10L * 1000L;
     public static final long DEFAULT_MAX_RETRY_TIMES = 150L;
 
     @Override
     public boolean processFinished() {
-        return retryTimes>maxRetryTimes;
+        return retryTimes > maxRetryTimes;
     }
 
     @Override
     public synchronized LocalDateTime processAndIncrementNextTimeStamp() {
         LocalDateTime nextTriggerTime = LocalDateTime.now();
-        if(retryTimes<maxRetryTimes){
-            nextTriggerTime = nextTriggerTime.minusSeconds(-1*step/1000);
+        if (retryTimes < maxRetryTimes) {
+            nextTriggerTime = nextTriggerTime.minusSeconds(-1 * step / 1000);
         }
-        if(step<=0L){
+        if (step <= 0L) {
             step = basicStep;
-        }else{
-            step = Math.min(step + stepIncrement,maxStep);
+        } else {
+            step = Math.min(step + stepIncrement, maxStep);
         }
         retryTimes++;
         return nextTriggerTime;
