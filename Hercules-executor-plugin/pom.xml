@@ -17,6 +17,7 @@
         <module>Hercules-executor-plugin-common-business</module>
         <module>Hercules-executor-plugin-common-bi</module>
         <module>Hercules-executor-plugin-test</module>
+        <module>Hercules-executor-plugin-datay-etl</module>
     </modules>
 
     <properties>
